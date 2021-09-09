@@ -1,0 +1,19 @@
+10:54:10 **** Incremental Build of configuration Debug for project FreeRTOS_Weerstation ****
+make -j8 all 
+arm-none-eabi-gcc -o "FreeRTOS_Weerstation.elf" @"objects.list"   -mcpu=cortex-m0 -T"C:\Users\e.hammer\OneDrive - Nazca IT Solutions BV (1)\Documents\weerstation-firmware\FreeRTOS_Weerstation\STM32F030R8TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="FreeRTOS_Weerstation.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Finished building target: FreeRTOS_Weerstation.elf
+ 
+arm-none-eabi-size   FreeRTOS_Weerstation.elf 
+arm-none-eabi-objdump -h -S  FreeRTOS_Weerstation.elf  > "FreeRTOS_Weerstation.list"
+arm-none-eabi-objcopy  -O binary  FreeRTOS_Weerstation.elf  "FreeRTOS_Weerstation.bin"
+   text	   data	    bss	    dec	    hex	filename
+  18524	    120	   7080	  25724	   647c	FreeRTOS_Weerstation.elf
+Finished building: default.size.stdout
+ 
+Finished building: FreeRTOS_Weerstation.bin
+ 
+Finished building: FreeRTOS_Weerstation.list
+ 
+
+10:54:11 Build Finished. 0 errors, 0 warnings. (took 1s.78ms)
+
