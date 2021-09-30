@@ -23,7 +23,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "string.h"
+#include <stdlib.h>
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -33,6 +35,11 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+int intTemp;
+int intHum;
+int intPress;
+int intError;
+char NTPdateTime[] = "";
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -41,32 +48,25 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 
-/* Definitions for blink01 */
-osThreadId_t blink01Handle;
-const osThreadAttr_t blink01_attributes = {
-  .name = "blink01",
+/* Definitions for dataESP */
+osThreadId_t dataESPHandle;
+const osThreadAttr_t dataESP_attributes = {
+  .name = "dataESP",
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
-/* Definitions for blink02 */
-osThreadId_t blink02Handle;
-const osThreadAttr_t blink02_attributes = {
-  .name = "blink02",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityBelowNormal,
-};
 /* USER CODE BEGIN PV */
-
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
-void StartBlink01(void *argument);
-void StartBlink02(void *argument);
+static void MX_USART1_UART_Init(void);
+void sendDataESP(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -74,7 +74,14 @@ void StartBlink02(void *argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+void debugPrint(UART_HandleTypeDef *huart, char _out[]){
+HAL_UART_Transmit(huart, (uint8_t *) _out, strlen(_out), 10);
+}
+void debugPrintln(UART_HandleTypeDef *huart, char _out[]){
+ HAL_UART_Transmit(huart, (uint8_t *) _out, strlen(_out), 10);
+ char newline[2] = "\r\n";
+ HAL_UART_Transmit(huart, (uint8_t *) newline, 2, 10);
+}
 /* USER CODE END 0 */
 
 /**
@@ -93,7 +100,13 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
+  //Reset sensor data.
+  intTemp = 0;
+  intHum = 0;
+  intPress = 0;
+  intError = 0;
 
+  HAL_UART_Transmit(&huart1, (uint8_t *) "ATE0\r\n", strlen("ATE0\r\n"), 10); //Disable ESP echo
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -106,6 +119,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART2_UART_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -130,11 +144,8 @@ int main(void)
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* creation of blink01 */
-  blink01Handle = osThreadNew(StartBlink01, NULL, &blink01_attributes);
-
-  /* creation of blink02 */
-  blink02Handle = osThreadNew(StartBlink02, NULL, &blink02_attributes);
+  /* creation of dataESP */
+  dataESPHandle = osThreadNew(sendDataESP, NULL, &dataESP_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -167,6 +178,7 @@ void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+  RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
 
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
@@ -194,6 +206,47 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART1;
+  PeriphClkInit.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK1;
+  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+/**
+  * @brief USART1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART1_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART1_Init 0 */
+
+  /* USER CODE END USART1_Init 0 */
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 115200;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART1_Init 2 */
+
+  /* USER CODE END USART1_Init 2 */
+
 }
 
 /**
@@ -212,7 +265,7 @@ static void MX_USART2_UART_Init(void)
 
   /* USER CODE END USART2_Init 1 */
   huart2.Instance = USART2;
-  huart2.Init.BaudRate = 38400;
+  huart2.Init.BaudRate = 115200;
   huart2.Init.WordLength = UART_WORDLENGTH_8B;
   huart2.Init.StopBits = UART_STOPBITS_1;
   huart2.Init.Parity = UART_PARITY_NONE;
@@ -267,46 +320,53 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE END 4 */
 
-/* USER CODE BEGIN Header_StartBlink01 */
+/* USER CODE BEGIN Header_sendDataESP */
 /**
-  * @brief  Function implementing the blink01 thread.
+  * @brief  Function implementing the dataESP thread.
   * @param  argument: Not used
   * @retval None
   */
-/* USER CODE END Header_StartBlink01 */
-void StartBlink01(void *argument)
+/* USER CODE END Header_sendDataESP */
+void sendDataESP(void *argument)
 {
   /* USER CODE BEGIN 5 */
   /* Infinite loop */
   for(;;)
   {
-	  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
-	  osDelay(500);
+	  debugPrintln(&huart2, "Temp in C: " + intTemp);
+	  debugPrintln(&huart2, "Hum in %: " + intHum);
+	  debugPrintln(&huart2, "Press in Pa: " + intPress);
+	  char tmp[] = "Date & Time: ";
+	  strcat(tmp,NTPdateTime);
+	  debugPrintln(&huart2, tmp);
+	  debugPrintln(&huart2, "Error: " + intError);
+	  char url[] = "GET http://server03.hammer-tech.eu/weerstationProject/connect.php?";
+	  char temp[] = "&intTemp=";
+	  itoa(intTemp,temp,10);
+	  char hum[] = "&intHum=";
+	  itoa(intHum,hum,10);
+	  char press[] = "&intPress=";
+	  itoa(intPress,press,10);
+	  char datetime[] = "&dtDateTime=";
+	  strcat(datetime,NTPdateTime);
+	  char error[] = "&intStationError=";
+	  itoa(intError,error,10);
+	  char end[] = " HTTP/1.1\r\nHost: server03.hammer-tech.eu\r\n Connection: close\r\n\r\n";
+	  strcat(url,temp);
+	  strcat(url,hum);
+	  strcat(url,press);
+	  strcat(url,datetime);
+	  strcat(url,error);
+	  strcat(url,end);
+	  debugPrintln(&huart2, url);
+	  //HAL_UART_Transmit(&huart1, (uint8_t *) txData, strlen(txData), 10000);
+
+	 // HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
+	 osDelay(500);
   }
   //In case of loop exit
   osThreadTerminate(NULL);
   /* USER CODE END 5 */
-}
-
-/* USER CODE BEGIN Header_StartBlink02 */
-/**
-* @brief Function implementing the blink02 thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_StartBlink02 */
-void StartBlink02(void *argument)
-{
-  /* USER CODE BEGIN StartBlink02 */
-  /* Infinite loop */
-  for(;;)
-  {
-	  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
-	  osDelay(600);
-  }
-  //In case of loop exit
-  osThreadTerminate(NULL);
-  /* USER CODE END StartBlink02 */
 }
 
 /**
