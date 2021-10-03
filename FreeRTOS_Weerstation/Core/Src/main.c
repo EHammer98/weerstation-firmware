@@ -82,6 +82,8 @@ void debugPrintln(UART_HandleTypeDef *huart, char _out[]){
  char newline[2] = "\r\n";
  HAL_UART_Transmit(huart, (uint8_t *) newline, 2, 10);
 }
+
+
 /* USER CODE END 0 */
 
 /**
@@ -101,12 +103,17 @@ int main(void)
 
   /* USER CODE BEGIN Init */
   //Reset sensor data.
-  intTemp = 0;
-  intHum = 0;
-  intPress = 0;
-  intError = 0;
+  intTemp = 1;
+  intHum = 2;
+  intPress = 3;
+  intError = 4;
+  /* ERRORS
+   *  1 = ESP-ERROR
+   *
+   */
 
-  HAL_UART_Transmit(&huart1, (uint8_t *) "ATE0\r\n", strlen("ATE0\r\n"), 10); //Disable ESP echo
+
+  HAL_UART_Transmit(&huart1, (uint8_t *) "ATE0\r\n", strlen("ATE0\r\n"), 100); //Disable ESP echo
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -331,36 +338,61 @@ void sendDataESP(void *argument)
 {
   /* USER CODE BEGIN 5 */
   /* Infinite loop */
+	HAL_UART_Transmit(&huart1, (uint8_t *) "ATE0\r\n", strlen("ATE0\r\n"), 100); //Disable ESP echo
+	char rxData[10];
+	char dtDEBUG[] = "Date & Time: ";
+	char tempDEBUG[] = "Temp in C: ";
+	char humDEBUG[] = "Hum in %: ";
+	char pressDEBUG[] = "Press in Pa: ";
+	char errorDEBUG[] = "Error: ";
+	char url[] = "GET http://server03.hammer-tech.eu/weerstationProject/connect.php?";
+	char temp[] = "&intTemp=";
+	char hum[] = "&intHum=";
+	char press[] = "&intPress=";
+	char datetime[] = "&dtDateTime=";
+	char error[] = "&intStationError=";
+	char tempDAT[] = "";
+	char humDAT[] = "";
+	char pressDAT[] = "";
+	char errorDAT[] = "";
+	char end[] = " HTTP/1.1\r\nHost: server03.hammer-tech.eu\r\n Connection: close\r\n\r\n";
   for(;;)
   {
-	  debugPrintln(&huart2, "Temp in C: " + intTemp);
-	  debugPrintln(&huart2, "Hum in %: " + intHum);
-	  debugPrintln(&huart2, "Press in Pa: " + intPress);
-	  char tmp[] = "Date & Time: ";
-	  strcat(tmp,NTPdateTime);
-	  debugPrintln(&huart2, tmp);
-	  debugPrintln(&huart2, "Error: " + intError);
-	  char url[] = "GET http://server03.hammer-tech.eu/weerstationProject/connect.php?";
-	  char temp[] = "&intTemp=";
-	  itoa(intTemp,temp,10);
-	  char hum[] = "&intHum=";
-	  itoa(intHum,hum,10);
-	  char press[] = "&intPress=";
-	  itoa(intPress,press,10);
-	  char datetime[] = "&dtDateTime=";
-	  strcat(datetime,NTPdateTime);
-	  char error[] = "&intStationError=";
-	  itoa(intError,error,10);
-	  char end[] = " HTTP/1.1\r\nHost: server03.hammer-tech.eu\r\n Connection: close\r\n\r\n";
-	  strcat(url,temp);
-	  strcat(url,hum);
-	  strcat(url,press);
-	  strcat(url,datetime);
-	  strcat(url,error);
-	  strcat(url,end);
-	  debugPrintln(&huart2, url);
-	  //HAL_UART_Transmit(&huart1, (uint8_t *) txData, strlen(txData), 10000);
 
+		itoa(intTemp,tempDAT,10);
+		itoa(intHum,humDAT,10);
+		itoa(intPress,pressDAT,10);
+		strcat(datetime,NTPdateTime);
+		itoa(intError,errorDAT,10);
+		strcat(tempDEBUG,tempDAT);
+		debugPrintln(&huart2, tempDEBUG);
+		strcat(humDEBUG,humDAT);
+		debugPrintln(&huart2, humDEBUG);
+		strcat(pressDEBUG,pressDAT);
+		debugPrintln(&huart2, pressDEBUG);
+		strcat(dtDEBUG,NTPdateTime);
+		debugPrintln(&huart2, dtDEBUG);
+		strcat(errorDEBUG,errorDAT);
+		debugPrintln(&huart2, errorDEBUG);
+		strcat(temp,tempDAT);
+		strcat(hum,humDAT);
+		strcat(press,pressDAT);
+		strcat(error,errorDAT);
+		strcat(url,temp);
+		strcat(url,hum);
+		strcat(url,press);
+		strcat(url,datetime);
+		strcat(url,error);
+		strcat(url,end);
+
+
+		debugPrintln(&huart2, url);
+		HAL_UART_Transmit(&huart1, (uint8_t *) url, strlen(url), 100);
+		HAL_UART_Receive(&huart1, (uint8_t *)rxData, 8, 100);
+		HAL_UART_Transmit(&huart2, (uint8_t*)rxData, strlen(rxData) , 100);
+		if (strstr(rxData, "ERROR") != NULL) {
+		    intError = 1;
+		}
 	 // HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
 	 osDelay(500);
   }
