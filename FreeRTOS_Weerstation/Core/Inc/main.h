@@ -37,7 +37,15 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-
+void SystemClock_Config(void);
+void MX_GPIO_Init(void);
+void MX_I2C1_Init(void);
+void MX_I2C2_Init(void);
+void MX_RTC_Init(void);
+void MX_USART1_Init(void);
+void MX_USART2_Init(void);
+void MX_WWDG_Init(void);
+void StartDefaultTask(void *argument);
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
