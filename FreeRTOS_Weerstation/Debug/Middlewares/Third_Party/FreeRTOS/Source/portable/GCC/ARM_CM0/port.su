@@ -10,5 +10,5 @@ port.c:273:6:vPortExitCritical	8	static,ignoring_inline_asm
 port.c:284:10:ulSetInterruptMaskFromISR	0	static,ignoring_inline_asm
 port.c:302:6:vClearInterruptMaskFromISR	0	static,ignoring_inline_asm
 port.c:319:6:PendSV_Handler	0	static,ignoring_inline_asm
-port.c:368:6:SysTick_Handler	16	static
+port.c:368:6:xPortSysTickHandler	16	static
 port.c:541:6:prvSetupTimerInterrupt	8	static
