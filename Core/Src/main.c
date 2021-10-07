@@ -20,8 +20,6 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
-#include "bme280.h"
-#include "bme280_defs.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -94,7 +92,7 @@ static void MX_RTC_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_WWDG_Init(void);
-//void StartDefaultTask(void *argument);
+void StartDefaultTask(void *argument);
 void senDataESP(void *argument);
 void leesData(void *argument);
 
@@ -464,106 +462,106 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE END 4 */
 
-/* USER CODE BEGIN Header_sendDataESP */
+/* USER CODE BEGIN Header_StartDefaultTask */
 /**
   * @brief  Function implementing the defaultTask thread.
   * @param  argument: Not used
   * @retval None
   */
-/* USER CODE END Header_sendDataESP */
-void sendDataESP(void *argument)
+/* USER CODE END Header_StartDefaultTask */
+void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
   /* Infinite loop */
-	//Local var. declaration.
-	char rxData[10]; //Containt data send from the ESP over UART1
-	char dtDEBUG[] = "Date & Time: ";
-	char tempDEBUG[] = "Temp in C: ";
-	char humDEBUG[] = "Hum in %: ";
-	char pressDEBUG[] = "Press in Pa: ";
-	char errorDEBUG[] = "Error: ";
-	char url[] = "GET http://server03.hammer-tech.eu/weerstationProject/connect.php?"; //Create connection with a PHP-page
-	char temp[] = "&intTemp=";
-	char hum[] = "&intHum=";
-	char press[] = "&intPress=";
-	char datetime[] = "&dtDateTime=";
-	char error[] = "&intStationError=";
-	char tempDAT[] = ""; //URL-part + data
-	char humDAT[] = ""; //URL-part + data
-	char pressDAT[] = ""; //URL-part + data
-	char errorDAT[] = ""; //URL-part + data
-	char end[] = " HTTP/1.1\r\nHost: server03.hammer-tech.eu\r\n Connection: close\r\n\r\n"; //Close connection with PHP-page
   for(;;)
   {
-	  int i;
-	  for(i = 0;i != sizeof(intTemp);i++){
-	  	//Convert INT to Char array
-		itoa(intTemp[i],tempDAT,10);
-		itoa(intHum[i],humDAT,10);
-		itoa(intPress[i],pressDAT,10);
-		itoa(intError,errorDAT,10);
-
-		//Combine array data with URL-part & print result for debugging
-		strcat(datetime,senDT[i]);
-		strcat(tempDEBUG,tempDAT);
-		debugPrintln(&huart2, tempDEBUG);
-		strcat(humDEBUG,humDAT);
-		debugPrintln(&huart2, humDEBUG);
-		strcat(pressDEBUG,pressDAT);
-		debugPrintln(&huart2, pressDEBUG);
-		strcat(dtDEBUG,NTPdateTime);
-		debugPrintln(&huart2, dtDEBUG);
-		strcat(errorDEBUG,errorDAT);
-		debugPrintln(&huart2, errorDEBUG);
-		strcat(temp,tempDAT);
-		strcat(hum,humDAT);
-		strcat(press,pressDAT);
-		strcat(error,errorDAT);
-		strcat(url,temp);
-		strcat(url,hum);
-		strcat(url,press);
-		strcat(url,datetime);
-		strcat(url,error);
-		strcat(url,end);
-
-
-		debugPrintln(&huart2, url); //Print end result AT-command for debugging
-		HAL_UART_Transmit(&huart1, (uint8_t *) url, strlen(url), 100); //Send AT-command
-		HAL_UART_Receive(&huart1, (uint8_t *)rxData, 8, 100); //Get response (like OK or ERROR)
-		HAL_UART_Transmit(&huart2, (uint8_t*)rxData, strlen(rxData) , 100); //Print response for debugging
-		//Check if there was an error
-		if (strstr(rxData, "ERROR") != NULL) {
-		    intError = 1; //change error code to '1' for ESP related error
-		    debugPrintln(&huart2, "ERROR1"); // Message for debugging
-		}
-	 // HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
-	 osDelay(60000); //Delay for sending #1min
-	  }
-	  i = 0;
+    osDelay(1);
   }
-  //In case of loop exit
-  osThreadTerminate(NULL);
   /* USER CODE END 5 */
 }
 
-/* USER CODE BEGIN Header_StartDefaultTask */
+/* USER CODE BEGIN Header_senDataESP */
 /**
 * @brief Function implementing the dataESP thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_StartDefaultTask */
-
-/*void StartDefaultTask(void *argument)
+/* USER CODE END Header_senDataESP */
+void senDataESP(void *argument)
 {
-  USER CODE BEGIN StartDefaultTask
-  Infinite loop
-  for(;;)
-  {
-    osDelay(1);
-  }
-  USER CODE END StartDefaultTask
-}*/
+  /* USER CODE BEGIN senDataESP */
+  /* Infinite loop */
+	/* USER CODE BEGIN 5 */
+	  /* Infinite loop */
+		//Local var. declaration.
+		char rxData[10]; //Containt data send from the ESP over UART1
+		char dtDEBUG[] = "Date & Time: ";
+		char tempDEBUG[] = "Temp in C: ";
+		char humDEBUG[] = "Hum in %: ";
+		char pressDEBUG[] = "Press in Pa: ";
+		char errorDEBUG[] = "Error: ";
+		char url[] = "GET http://server03.hammer-tech.eu/weerstationProject/connect.php?"; //Create connection with a PHP-page
+		char temp[] = "&intTemp=";
+		char hum[] = "&intHum=";
+		char press[] = "&intPress=";
+		char datetime[] = "&dtDateTime=";
+		char error[] = "&intStationError=";
+		char tempDAT[] = ""; //URL-part + data
+		char humDAT[] = ""; //URL-part + data
+		char pressDAT[] = ""; //URL-part + data
+		char errorDAT[] = ""; //URL-part + data
+		char end[] = " HTTP/1.1\r\nHost: server03.hammer-tech.eu\r\n Connection: close\r\n\r\n"; //Close connection with PHP-page
+	  for(;;)
+	  {
+		  int i;
+		  for(i = 0;i != sizeof(intTemp);i++){
+		  	//Convert INT to Char array
+			itoa(intTemp[i],tempDAT,10);
+			itoa(intHum[i],humDAT,10);
+			itoa(intPress[i],pressDAT,10);
+			itoa(intError,errorDAT,10);
+			debugPrintln(&huart2, "HALLO");
+			//Combine array data with URL-part & print result for debugging
+			/*
+			strcat(datetime,senDT[i]);
+			strcat(tempDEBUG,tempDAT);
+			debugPrintln(&huart2, tempDEBUG);
+			strcat(humDEBUG,humDAT);
+			debugPrintln(&huart2, humDEBUG);
+			strcat(pressDEBUG,pressDAT);
+			debugPrintln(&huart2, pressDEBUG);
+			strcat(dtDEBUG,NTPdateTime);
+			debugPrintln(&huart2, dtDEBUG);
+			strcat(errorDEBUG,errorDAT);
+			debugPrintln(&huart2, errorDEBUG);
+			strcat(temp,tempDAT);
+			strcat(hum,humDAT);
+			strcat(press,pressDAT);
+			strcat(error,errorDAT);
+			strcat(url,temp);
+			strcat(url,hum);
+			strcat(url,press);
+			strcat(url,datetime);
+			strcat(url,error);
+			strcat(url,end);
+*/
+
+			debugPrintln(&huart2, url); //Print end result AT-command for debugging
+			HAL_UART_Transmit(&huart1, (uint8_t *) url, strlen(url), 100); //Send AT-command
+			HAL_UART_Receive(&huart1, (uint8_t *)rxData, 8, 100); //Get response (like OK or ERROR)
+			HAL_UART_Transmit(&huart2, (uint8_t*)rxData, strlen(rxData) , 100); //Print response for debugging
+			//Check if there was an error
+			if (strstr(rxData, "ERROR") != NULL) {
+			    intError = 1; //change error code to '1' for ESP related error
+			    debugPrintln(&huart2, "ERROR1"); // Message for debugging
+			}
+		 // HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
+		 osDelay(1000); //Delay for sending #1min (60000)
+		  }
+		  i = 0;
+	  }
+  /* USER CODE END senDataESP */
+}
 
 /* USER CODE BEGIN Header_leesData */
 /**
@@ -571,114 +569,38 @@ void sendDataESP(void *argument)
 * @param argument: Not used
 * @retval None
 */
-
-struct bme280_dev dev;
-struct bme280_data comp_data;
-int8_t rslt;
-
-char line1[16];
-char line2[16];
-char line3[16];
-
-int8_t user_i2c_read(uint8_t id, uint8_t reg_addr, uint8_t *data, uint16_t len)
-{
-  if(HAL_I2C_Master_Transmit(&hi2c1, (id << 1), &reg_addr, 1, 10) != HAL_OK) return -1;
-  if(HAL_I2C_Master_Receive(&hi2c1, (id << 1) | 0x01, data, len, 10) != HAL_OK) return -1;
-
-  return 0;
-}
-
-void user_delay_ms(uint32_t period)
-{
-  HAL_Delay(period);
-}
-
-int8_t user_i2c_write(uint8_t id, uint8_t reg_addr, uint8_t *data, uint16_t len)
-{
-  int8_t *buf;
-  buf = malloc(len +1);
-  buf[0] = reg_addr;
-  memcpy(buf +1, data, len);
-
-  if(HAL_I2C_Master_Transmit(&hi2c1, (id << 1), (uint8_t*)buf, len + 1, HAL_MAX_DELAY) != HAL_OK) return -1;
-
-  free(buf);
-  return 0;
-}
-
 /* USER CODE END Header_leesData */
 void leesData(void *argument)
 {
   /* USER CODE BEGIN leesData */
-
-  /* MCU Configuration----------------------------------------------------------*/
-
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
-
-  /* USER CODE BEGIN Init */
-
-  /* USER CODE END Init */
-
-  /* Configure the system clock */
-  SystemClock_Config();
-
-  /* USER CODE BEGIN SysInit */
-
-  /* USER CODE END SysInit */
-
-  /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_I2C1_Init();
-  MX_I2C2_Init();
-  //MX_RTC_Init();
-  //MX_WWDG_Init();
-  /* USER CODE BEGIN 2 */
-
-  /* BME280 초기화 */
-  dev.dev_id = BME280_I2C_ADDR_SEC;
-  dev.intf = BME280_I2C_INTF;
-  dev.read = user_i2c_read;
-  dev.write = user_i2c_write;
-  dev.delay_ms = user_delay_ms;
-
-  rslt = bme280_init(&dev);
-
-  /* BME280 설정 */
-  dev.settings.osr_h = BME280_OVERSAMPLING_1X;
-  dev.settings.osr_p = BME280_OVERSAMPLING_16X;
-  dev.settings.osr_t = BME280_OVERSAMPLING_2X;
-  dev.settings.filter = BME280_FILTER_COEFF_16;
-  rslt = bme280_set_sensor_settings(BME280_OSR_PRESS_SEL | BME280_OSR_TEMP_SEL | BME280_OSR_HUM_SEL | BME280_FILTER_SEL, &dev);
-
-  /* USER CODE END 2 */
-
   /* Infinite loop */
   for(;;)
   {
-	    /* FORCED 모드 설정, 측정 후 SLEEP 모드로 전환됨 */
-	    rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &dev);
-	    dev.delay_ms(40);
-	    /* 데이터 취득 */
-	    rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &dev);
-	    if(rslt == BME280_OK)
-	    {
-	      *intTemp = comp_data.intTemp / 100.0;      /* °C  */
-	      *intHum = comp_data.intHum / 1024.0;       /* %   */
-	      *intPress = comp_data.intPress / 10000.0;  /* hPa */
-
-	      memset(line1, 0, sizeof(line1));
-	      memset(line2, 0, sizeof(line2));
-	      memset(line3, 0, sizeof(line3));
-	      sprintf(line1, "HUMID: %p", &intHum);
-	      sprintf(line2, "TEMP: %p", &intTemp);
-	      sprintf(line3, "PRESS: %p", &intPress);
-
-	    }
-	  }
-    osDelay(6000);//Delay for reading #1min
+    osDelay(1);
   }
   /* USER CODE END leesData */
+}
+
+/**
+  * @brief  Period elapsed callback in non blocking mode
+  * @note   This function is called  when TIM17 interrupt took place, inside
+  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+  * a global variable "uwTick" used as application time base.
+  * @param  htim : TIM handle
+  * @retval None
+  */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  /* USER CODE BEGIN Callback 0 */
+
+  /* USER CODE END Callback 0 */
+  if (htim->Instance == TIM17) {
+    HAL_IncTick();
+  }
+  /* USER CODE BEGIN Callback 1 */
+
+  /* USER CODE END Callback 1 */
+}
 
 /**
   * @brief  This function is executed in case of error occurrence.

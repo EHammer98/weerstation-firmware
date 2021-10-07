@@ -40,11 +40,11 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_I2C2_Init(void);
-static void MX_RTC_Init(void);
+//static void MX_RTC_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_USART2_UART_Init(void);
-static void MX_WWDG_Init(void);
-//void StartDefaultTask(void *argument);
+//static void MX_WWDG_Init(void);
+void StartDefaultTask(void *argument);
 void senDataESP(void *argument);
 void leesData(void *argument);
 /* USER CODE END ET */
