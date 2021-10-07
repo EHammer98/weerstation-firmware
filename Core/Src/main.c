@@ -675,9 +675,6 @@ void leesData(void *argument)
 	      sprintf(line3, "PRESS: %p", &intPress);
 
 	    }
-
-	    HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_15);
-	    HAL_Delay(1000);
 	  }
     osDelay(6000);//Delay for reading #1min
   }
