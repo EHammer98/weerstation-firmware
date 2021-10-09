@@ -1,7 +1,0 @@
-circularbuffer.c:39:6:CircularBuffer_init	24	static
-circularbuffer.c:60:10:CircularBuffer_getUnreadSize	24	static
-circularbuffer.c:78:6:CircularBuffer_checkAndClearFault	16	static
-circularbuffer.c:107:6:CircularBuffer_pushBackByte	32	static
-circularbuffer.c:142:6:CircularBuffer_popFrontByte	16	static
-circularbuffer.c:169:10:CircularBuffer_pushBack	40	static
-circularbuffer.c:216:10:CircularBuffer_popFront	40	static
