@@ -5,6 +5,7 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
+../Core/Src/bme280.c \
 ../Core/Src/freertos.c \
 ../Core/Src/main.c \
 ../Core/Src/stm32f0xx_hal_msp.c \
@@ -15,6 +16,7 @@ C_SRCS += \
 ../Core/Src/system_stm32f0xx.c 
 
 OBJS += \
+./Core/Src/bme280.o \
 ./Core/Src/freertos.o \
 ./Core/Src/main.o \
 ./Core/Src/stm32f0xx_hal_msp.o \
@@ -25,6 +27,7 @@ OBJS += \
 ./Core/Src/system_stm32f0xx.o 
 
 C_DEPS += \
+./Core/Src/bme280.d \
 ./Core/Src/freertos.d \
 ./Core/Src/main.d \
 ./Core/Src/stm32f0xx_hal_msp.d \

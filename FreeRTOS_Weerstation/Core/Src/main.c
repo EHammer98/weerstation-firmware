@@ -20,6 +20,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
+#include "bme280_defs.h"
+#include "bme280.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -513,7 +515,7 @@ void sendESP(void *argument)
 		    debugPrintln(&huart2, "ERROR1"); // Message for debugging
 		}
 	 // HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
-	 osDelay(5000); //Delay for sending #1min
+	 osDelay(6000); //Delay for sending #1min
 	  }
 	  i = 0;
   }
@@ -526,14 +528,78 @@ void sendESP(void *argument)
 * @param argument: Not used
 * @retval None
 */
+
+struct bme280_dev dev;
+struct bme280_data comp_data;
+int8_t rslt;
+
+char line1[16];
+char line2[16];
+char line3[16];
+
+int8_t user_i2c_read(uint8_t id, uint8_t reg_addr, uint8_t *data, uint16_t len)
+{
+  if(HAL_I2C_Master_Transmit(&hi2c1, (id << 1), &reg_addr, 1, 10) != HAL_OK) return -1;
+  if(HAL_I2C_Master_Receive(&hi2c1, (id << 1) | 0x01, data, len, 10) != HAL_OK) return -1;
+
+  return 0;
+}
+
+void user_delay_ms(uint32_t period)
+{
+  HAL_Delay(period);
+}
+
+int8_t user_i2c_write(uint8_t id, uint8_t reg_addr, uint8_t *data, uint16_t len)
+{
+  int8_t *buf;
+  buf = malloc(len +1);
+  buf[0] = reg_addr;
+  memcpy(buf +1, data, len);
+
+  if(HAL_I2C_Master_Transmit(&hi2c1, (id << 1), (uint8_t*)buf, len + 1, HAL_MAX_DELAY) != HAL_OK) return -1;
+
+  free(buf);
+  return 0;
+}
+
 /* USER CODE END Header_readData */
 void readData(void *argument)
 {
   /* USER CODE BEGIN readData */
+	/* BME280 초기화 */
+	  dev.dev_id = BME280_I2C_ADDR_SEC;
+	  dev.intf = BME280_I2C_INTF;
+	  dev.read = user_i2c_read;
+	  dev.write = user_i2c_write;
+	  dev.delay_ms = user_delay_ms;
+
+	  rslt = bme280_init(&dev);
+
+	  /* BME280 설정 */
+	  dev.settings.osr_h = BME280_OVERSAMPLING_1X;
+	  dev.settings.osr_p = BME280_OVERSAMPLING_16X;
+	  dev.settings.osr_t = BME280_OVERSAMPLING_2X;
+	  dev.settings.filter = BME280_FILTER_COEFF_16;
+	  rslt = bme280_set_sensor_settings(BME280_OSR_PRESS_SEL | BME280_OSR_TEMP_SEL | BME280_OSR_HUM_SEL | BME280_FILTER_SEL, &dev);
+
   /* Infinite loop */
   for(;;)
   {
-	osDelay(1);
+	  /* USER CODE BEGIN 3 */
+	      /* FORCED 모드 설정, 측정 후 SLEEP 모드로 전환됨 */
+	      rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &dev);
+	      dev.delay_ms(40);
+	      /* 데이터 취득 */
+	      rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &dev);
+	      if(rslt == BME280_OK)
+	      {
+	    	*intTemp = comp_data.intTemp / 100.0;      /* °C  */
+	    	*intHum = comp_data.intHum / 1024.0;           /* %   */
+	    	*intPress = comp_data.intPress / 10000.0;          /* hPa */
+	      }
+
+	osDelay(6000); //wait 1 minute
   }
   /* USER CODE END readData */
 }
