@@ -65,8 +65,8 @@ all: main-build
 main-build: FreeRTOS_Weerstation.elf secondary-outputs
 
 # Tool invocations
-FreeRTOS_Weerstation.elf: $(OBJS) $(USER_OBJS) C:\Users\alici\OneDrive\Documenten\New\ folder\FreeRTOS_Weerstation\STM32F030R8TX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "FreeRTOS_Weerstation.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m0 -T"C:\Users\alici\OneDrive\Documenten\New folder\FreeRTOS_Weerstation\STM32F030R8TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="FreeRTOS_Weerstation.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+FreeRTOS_Weerstation.elf: $(OBJS) $(USER_OBJS) C:\Users\Elwin\STM32CubeIDE\workspace_1.7.0\FreeRTOS_Weerstation\STM32F030R8TX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "FreeRTOS_Weerstation.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m0 -T"C:\Users\Elwin\STM32CubeIDE\workspace_1.7.0\FreeRTOS_Weerstation\STM32F030R8TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="FreeRTOS_Weerstation.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

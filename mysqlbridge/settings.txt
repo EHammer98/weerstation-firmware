@@ -1,0 +1,9 @@
+<?php
+
+$servername = "databases.aii.avans.nl"; // Do not use localhost!
+$username = "bpeters4";
+$password = "Ab12345";
+$dbname = "bpeters4_db2";
+$dbport = 3306;
+
+
