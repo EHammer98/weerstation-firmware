@@ -473,13 +473,13 @@ void sendESP(void *argument)
   for(;;)
   {
 	  int i;
-	  for(i = 0;i != sizeof(intTemp);i++){
+	  for(i = 0;i != sizeof(intTemp);i++)
+	  {
 	  	//Convert INT to Char array
 		itoa(intTemp[i],tempDAT,10);
 		itoa(intHum[i],humDAT,10);
 		itoa(intPress[i],pressDAT,10);
 		itoa(intError,errorDAT,10);
-
 		//Combine array data with URL-part & print result for debugging
 		/*
 		strcat(datetime,senDT[i]);
@@ -504,18 +504,21 @@ void sendESP(void *argument)
 		strcat(url,error);
 		strcat(url,end);
 */
-		sprintf(url, "temperatuur=%d&vochtigheid=%d&luchtdruk=%d\r\n", intTemp[i], intHum[i], intPress[i]);
-		debugPrintln(&huart2, url); //Print end result AT-command for debugging
-		HAL_UART_Transmit(&huart1, (uint8_t *) url, strlen(url), 100); //Send AT-command
-		HAL_UART_Receive(&huart1, (uint8_t *)rxData, 8, 100); //Get response (like OK or ERROR)
-		HAL_UART_Transmit(&huart2, (uint8_t*)rxData, strlen(rxData) , 100); //Print response for debugging
-		//Check if there was an error
-		if (strstr(rxData, "ERROR") != NULL) {
-		    intError = 1; //change error code to '1' for ESP related error
-		    debugPrintln(&huart2, "ERROR1"); // Message for debugging
+		if(intTemp[i] != 0 && intHum[i] != 0 && intPress[i] != 0)
+		{
+			sprintf(url, "temperatuur=%d&vochtigheid=%d&luchtdruk=%d\r\n", intTemp[i], intHum[i], intPress[i]);
+			debugPrintln(&huart2, url); //Print end result AT-command for debugging
+			HAL_UART_Transmit(&huart1, (uint8_t *) url, strlen(url), 100); //Send AT-command
+			HAL_UART_Receive(&huart1, (uint8_t *)rxData, 8, 100); //Get response (like OK or ERROR)
+			HAL_UART_Transmit(&huart2, (uint8_t*)rxData, strlen(rxData) , 100); //Print response for debugging
+			//Check if there was an error
+			if (strstr(rxData, "ERROR") != NULL)
+			{
+				intError = 1; //change error code to '1' for ESP related error
+				debugPrintln(&huart2, "ERROR1"); // Message for debugging
+			}
 		}
-	 // HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
-	 osDelay(6000); //Delay for sending #1min
+		osDelay(6000); //Delay for sending #1min
 	  }
 	  i = 0;
   }
@@ -599,7 +602,6 @@ void readData(void *argument)
 	    	*intPress = comp_data.intPress / 10000.0;          /* hPa */
 	      }
 
-	osDelay(6000); //wait 1 minute
   }
   /* USER CODE END readData */
 }

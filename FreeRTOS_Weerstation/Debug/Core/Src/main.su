@@ -8,9 +8,9 @@ main.c:404:13:MX_GPIO_Init	56	static
 main.c:433:6:debugPrint	16	static
 main.c:437:6:debugPrintln	24	static
 main.c:451:6:sendESP	344	static
-main.c:540:8:user_i2c_read	32	static
-main.c:548:6:user_delay_ms	16	static
-main.c:553:8:user_i2c_write	40	static
-main.c:567:6:readData	24	static
-main.c:615:6:HAL_TIM_PeriodElapsedCallback	16	static
-main.c:632:6:Error_Handler	8	static,ignoring_inline_asm
+main.c:543:8:user_i2c_read	32	static
+main.c:551:6:user_delay_ms	16	static
+main.c:556:8:user_i2c_write	40	static
+main.c:570:6:readData	24	static
+main.c:617:6:HAL_TIM_PeriodElapsedCallback	16	static
+main.c:634:6:Error_Handler	8	static,ignoring_inline_asm
