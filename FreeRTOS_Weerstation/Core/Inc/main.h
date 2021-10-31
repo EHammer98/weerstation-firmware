@@ -72,7 +72,13 @@ int connectESPtoWifi();
 #define TCK_Pin GPIO_PIN_14
 #define TCK_GPIO_Port GPIOA
 /* USER CODE BEGIN Private defines */
-
+struct sensorWaarde
+{
+	int sTemp;
+	int sHum;
+	int sPress;
+	char sTime[16];
+};
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

@@ -36,12 +36,13 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-int* intTemp; //Contains live temperature data
-int* intHum; //Contains live humidity data
-int* intPress; // Contains live air pressure data
 int intError; // contains live error code
-char time[10][9] = {"", "", "", "", "", "", "", "", "", ""}; // Contains time from measurement (2D array)
 char NTPdateTime[] = ""; // Contains internet time
+char rxData[500];
+struct bme280_dev dev;
+struct bme280_data comp_data;
+int8_t rslt;
+struct sensorWaarde sensorWaarden[10];
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -58,11 +59,11 @@ UART_HandleTypeDef huart2;
 
 /* Definitions for sendESPtask */
 osThreadId_t sendESPtaskHandle;
-const osThreadAttr_t sendESPtask_attributes = {
-  .name = "sendESPtask",
-  .stack_size = 300 * 4,
-  .priority = (osPriority_t) osPriorityBelowNormal,
-};
+//const osThreadAttr_t sendESPtask_attributes = {
+//  .name = "sendESPtask",
+//  .stack_size = 300 * 4,
+//  .priority = (osPriority_t) osPriorityBelowNormal,
+//};
 /* Definitions for readDataTask */
 osThreadId_t readDataTaskHandle;
 const osThreadAttr_t readDataTask_attributes = {
@@ -71,12 +72,12 @@ const osThreadAttr_t readDataTask_attributes = {
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for getESPtimeTask */
-osThreadId_t getESPtimeTaskHandle;
+/*osThreadId_t getESPtimeTaskHandle;
 const osThreadAttr_t getESPtimeTask_attributes = {
   .name = "getESPtimeTask",
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityAboveNormal,
-};
+};*/
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -88,9 +89,13 @@ static void MX_USART2_UART_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_I2C2_Init(void);
 static void MX_USART1_UART_Init(void);
-void sendESP(void *argument);
+void sendESP();
 void readData(void *argument);
-void getESPtime(void *argument);
+void getESPtime();
+void getESPtime2();
+int8_t user_i2c_read(uint8_t id, uint8_t reg_addr, uint8_t *data, uint16_t len);
+int8_t user_i2c_write(uint8_t id, uint8_t reg_addr, uint8_t *data, uint16_t len);
+void user_delay_ms(uint32_t period);
 
 /* USER CODE BEGIN PFP */
 
@@ -119,10 +124,6 @@ int main(void)
   /* USER CODE BEGIN Init */
   //Reset sensor data.
   //memory allocation
-  intTemp = (int*)calloc(10, sizeof(int));
-  intHum = (int*)calloc(10, sizeof(int));
-  intPress = (int*)calloc(10, sizeof(int));
-  //senDT = calloc(10, sizeof(*senDT));
   intError = 0;
   /* ERRORS
    *  1 = ESP-ERROR
@@ -162,19 +163,37 @@ int main(void)
   /* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
 
-  /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
-  /* USER CODE END RTOS_QUEUES */
+  /* USER CODE BEGIN INITIALIZATIONS */
+  dev.dev_id = BME280_I2C_ADDR_SEC;
+  dev.intf = BME280_I2C_INTF;
+  dev.read = user_i2c_read;
+  dev.write = user_i2c_write;
+  dev.delay_ms = user_delay_ms;
+
+  rslt = bme280_init(&dev);
+
+  /* BME280 설정 */
+  dev.settings.osr_h = BME280_OVERSAMPLING_1X;
+  dev.settings.osr_p = BME280_OVERSAMPLING_16X;
+  dev.settings.osr_t = BME280_OVERSAMPLING_2X;
+  dev.settings.filter = BME280_FILTER_COEFF_16;
+  rslt = bme280_set_sensor_settings(BME280_OSR_PRESS_SEL | BME280_OSR_TEMP_SEL | BME280_OSR_HUM_SEL | BME280_FILTER_SEL, &dev);
+
+  /* USER CODE BEGIN 3 */
+  /* FORCED 모드 설정, 측정 후 SLEEP 모드로 전환�?� */
+  rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &dev);
+
+  /* USER CODE END INITIALIZATIONS */
 
   /* Create the thread(s) */
   /* creation of sendESPtask */
-  sendESPtaskHandle = osThreadNew(sendESP, NULL, &sendESPtask_attributes);
+//  sendESPtaskHandle = osThreadNew(sendESP, NULL, &sendESPtask_attributes);
 
   /* creation of readDataTask */
   readDataTaskHandle = osThreadNew(readData, NULL, &readDataTask_attributes);
 
   /* creation of getESPtimeTask */
-  getESPtimeTaskHandle = osThreadNew(getESPtime, NULL, &getESPtimeTask_attributes);
+  //getESPtimeTaskHandle = osThreadNew(getESPtime, NULL, &getESPtimeTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -445,27 +464,36 @@ void debugPrint(UART_HandleTypeDef *huart, char _out[]){
 }
 
 void debugPrintln(UART_HandleTypeDef *huart, char _out[]){
- HAL_UART_Transmit(huart, (uint8_t *) _out, strlen(_out), 10);
+ HAL_UART_Transmit(huart, (uint8_t *) _out, strlen(_out), 100);
  char newline[2] = "\r\n";
- HAL_UART_Transmit(huart, (uint8_t *) newline, 2, 10);
+ HAL_UART_Transmit(huart, (uint8_t *) newline, 2, 100);
 }
 
 char *sendToESP(char *data)
 {
-	char rxData[100] = {0}; //Contains data send from the ESP over UART1
-	char *str = malloc(100);
+	char startDelimiter[] = "Start Response\n";
+	char endDelimiter[] = "\nEnd Response\n";
+	char aLocalBuffer[10];
+	int iIndexIntoRxData = 0;
+	memset(rxData, 0, 500);
 	debugPrintln(&huart2, data); //Print end result AT-command for debugging
 	HAL_UART_Transmit(&huart1, (uint8_t *) data, strlen(data), 100); //Send AT-command
-	HAL_UART_Receive(&huart1, (uint8_t *)rxData, 100, 100); //Get response (like OK or ERROR)
-	//HAL_UART_Transmit(&huart2, (uint8_t*)rxData, strlen(rxData) , 100); //Print response for debugging
-	//debugPrintln(&huart2, "msg: \n"); // Message for debugging
-	debugPrintln(&huart2, rxData); // Message for debugging
-	//debugPrintln(&huart2, "\n"); // Message for debugging
-	for(int i = 0; i < 101; i++){
-		str[i] = rxData[i];
+	do
+	{
+		memset(aLocalBuffer, 0, 10);
+		HAL_UART_Receive(&huart1, (uint8_t *)aLocalBuffer, 10, 1000); //Get response (like OK or ERROR)
+		if (iIndexIntoRxData < 50)
+		{
+			memcpy(&rxData[iIndexIntoRxData*10], aLocalBuffer, 10);
+			iIndexIntoRxData++;
+		}
 	}
-	free(str);
-    return str;
+	while(strcmp(aLocalBuffer, "\0\0\0\0\0\0\0\0\0\0") != 0);
+
+	HAL_UART_Transmit(&huart2, (uint8_t*)startDelimiter, strlen(startDelimiter) , 100); //Print response for debugging
+	HAL_UART_Transmit(&huart2, (uint8_t*)rxData, strlen(rxData) , 100); //Print response for debugging
+	HAL_UART_Transmit(&huart2, (uint8_t*)endDelimiter, strlen(endDelimiter) , 100); //Print response for debugging
+    return rxData;
 
 }
 
@@ -477,7 +505,8 @@ int connectESPtoWifi()
 	char disableEcho[] = "ATE0\r\n";
 	char checkWifiConnected[] = "AT+CWJAP?\r\n";
 	char setWifiMode[] = "AT+CWMODE=1\r\n";
-	char connectToAP[] = "AT+CWJAP=\"Ziggo2257742\",\"Performance1#\"\r\n";
+	//char connectToAP[] = "AT+CWJAP=\"Ziggo2257742\",\"Performance1#\"\r\n";
+	char connectToAP[] = "AT+CWJAP=\"Hellbender5\",\"Wireless@Here2\"\r\n";
 	char response[500];
 
 	strcpy(response, sendToESP(resetESP));
@@ -506,10 +535,44 @@ int connectESPtoWifi()
 			debugPrintln(&huart2, response); // Message for debugging
 		}
 	}
-
+	getESPtime2();
 	return 1;
 }
 
+void getESPtime2()
+{
+  /* USER CODE BEGIN getESPtime2 */
+
+	char initCon[] = "AT+CIPSTART=\"TCP\",\"server03.hammer-tech.eu\",80\r\n";
+	char initSize[] = "AT+CIPSEND=99\r\n";
+	char data[] = "GET http://server03.hammer-tech.eu/weerstation/time.php HTTP/1.1\r\nHost: server03.hammer-tech.eu\r\n\r\n";
+	char closeCon[] = "AT+CIPCLOSE\r\n";
+
+	sendToESP(initCon);
+	//Check if there was an error
+	if (strstr(rxData, "ERROR") != NULL)
+	{
+		intError = 1; //change error code to '1' for ESP related error
+		debugPrintln(&huart2, "ERROR1"); // Message for debugging
+	}
+	sendToESP(initSize);
+	//Check if there was an error
+	if (strstr(rxData, "ERROR") != NULL)
+	{
+		intError = 1; //change error code to '1' for ESP related error
+		debugPrintln(&huart2, "ERROR1"); // Message for debugging
+	}
+	sendToESP(data);
+	//Check if there was an error
+	if (strstr(rxData, "ERROR") != NULL)
+	{
+		intError = 1; //change error code to '1' for ESP related error
+		debugPrintln(&huart2, "ERROR1"); // Message for debugging
+	}
+	sendToESP(closeCon);
+
+  /* USER CODE END getESPtime2 */
+}
 
 /* USER CODE BEGIN Header_sendESP */
 /**
@@ -518,47 +581,65 @@ int connectESPtoWifi()
   * @retval None
   */
 /* USER CODE END Header_sendESP */
-void sendESP(void *argument)
+void sendESP()
 {
   /* USER CODE BEGIN 5 */
 	debugPrintln(&huart2, "sendESP FUNC \n"); // Message for debugging
   /* Infinite loop */
 	//Local var. declaration.
-	char response[10]; //Containt data send from the ESP over UART1
-	char initCon[] = "AT+CIPSTART=\"TCP\",\"server03.hammer-tech.eu\",80";
-	char initSize[] = "AT+CIPSEND=177";
-	char data[] = "POST /weerstation/index.php HTTP/1.1r\nHost: server03.hammer-tech.eu\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: 37\r\n\n";
-	int i;
-	for(i = 0;i != sizeof(intTemp);i++)
+	int i = 0;
+	char oData[70];
+	sprintf(oData, "temperature=%d&humidity=%d&pressure=%d&time=%d&errors=%d\r\n", sensorWaarden[i].sTemp, sensorWaarden[i].sHum, sensorWaarden[i].sPress, sensorWaarden[i].sTime[0-15], 0);
+	char data[160];
+//	sprintf(data, "POST http://server03.hammer-tech.eu/weerstation/index.php HTTP/1.1\r\nHost: server03.hammer-tech.eu\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: %i\r\n\r\n", strlen(oData)-2);
+	sprintf(data, "POST http://192.168.1.111/weerstation/index.php HTTP/1.1\r\nHost: 192.168.1.111\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: %i\r\n\r\n", strlen(oData)-2);
+
+	//char initCon[] = "AT+CIPSTART=\"TCP\",\"server03.hammer-tech.eu\",80\r\n";
+	char initCon[] = "AT+CIPSTART=\"TCP\",\"192.168.1.111\",80\r\n";
+	char initSize[20];
+	sprintf(initSize, "AT+CIPSEND=%d\r\n", strlen(oData) + strlen(data));
+	char closeCon[] = "AT+CIPCLOSE\r\n";
+
+
+	if(sensorWaarden[i].sTemp != 0 && sensorWaarden[i].sHum != 0 && sensorWaarden[i].sPress != 0 /*&& time[i][0-15] != 0*/)
 	{
-	if(intTemp[i] != 0 && intHum[i] != 0 && intPress[i] != 0 && time[i][0-15] != 0)
-	{
-		sprintf(data, "temperatuur=%d&vochtigheid=%d&luchtdruk=%dtime=%d\r\n", intTemp[i], intHum[i], intPress[i], time[i][0-15]);
-		strcpy(response, sendToESP(initCon));
+		sendToESP(initCon);
 		//Check if there was an error
-		if (strstr(response, "ERROR") != NULL)
+		if (strstr(rxData, "ERROR") != NULL)
 		{
 			intError = 1; //change error code to '1' for ESP related error
 			debugPrintln(&huart2, "ERROR1"); // Message for debugging
 		}
-		strcpy(response, sendToESP(initSize));
+		sendToESP(initSize);
 		//Check if there was an error
-		if (strstr(response, "ERROR") != NULL)
+		if (strstr(rxData, "ERROR") != NULL)
 		{
-			intError = 1; //change error code to '1' for ESP related error
-			debugPrintln(&huart2, "ERROR1"); // Message for debugging
+			intError = 2; //change error code to '1' for ESP related error
+			debugPrintln(&huart2, "ERROR2"); // Message for debugging
 		}
-		strcpy(response, sendToESP(data));
+		sendToESP(data);
 		//Check if there was an error
-		if (strstr(response, "ERROR") != NULL)
+		if (strstr(rxData, "ERROR") != NULL)
 		{
-			intError = 1; //change error code to '1' for ESP related error
-			debugPrintln(&huart2, "ERROR1"); // Message for debugging
+			intError = 3; //change error code to '1' for ESP related error
+			debugPrintln(&huart2, "ERROR3"); // Message for debugging
+		}
+		sendToESP(oData);
+		//Check if there was an error
+		if (strstr(rxData, "ERROR") != NULL)
+		{
+			intError = 4; //change error code to '1' for ESP related error
+			debugPrintln(&huart2, "ERROR4"); // Message for debugging
+		}
+		sendToESP(closeCon);
+		//Check if there was an error
+		if (strstr(rxData, "ERROR") != NULL)
+		{
+			intError = 5; //change error code to '1' for ESP related error
+			debugPrintln(&huart2, "ERROR5"); // Message for debugging
 		}
 	}
 	//osDelay(6000); //Delay for sending #1min
-	}
-	i = 0;
   /* USER CODE END 5 */
 }
 
@@ -568,14 +649,6 @@ void sendESP(void *argument)
 * @param argument: Not used
 * @retval None
 */
-
-struct bme280_dev dev;
-struct bme280_data comp_data;
-int8_t rslt;
-
-char line1[16];
-char line2[16];
-char line3[16];
 
 int8_t user_i2c_read(uint8_t id, uint8_t reg_addr, uint8_t *data, uint16_t len)
 {
@@ -608,35 +681,15 @@ void readData(void *argument)
 {
   /* USER CODE BEGIN readData */
 	debugPrintln(&huart2, "readData FUNC \n"); // Message for debugging
-	/* BME280 초기화 */
-	  dev.dev_id = BME280_I2C_ADDR_SEC;
-	  dev.intf = BME280_I2C_INTF;
-	  dev.read = user_i2c_read;
-	  dev.write = user_i2c_write;
-	  dev.delay_ms = user_delay_ms;
 
-	  rslt = bme280_init(&dev);
-
-	  /* BME280 설정 */
-	  dev.settings.osr_h = BME280_OVERSAMPLING_1X;
-	  dev.settings.osr_p = BME280_OVERSAMPLING_16X;
-	  dev.settings.osr_t = BME280_OVERSAMPLING_2X;
-	  dev.settings.filter = BME280_FILTER_COEFF_16;
-	  rslt = bme280_set_sensor_settings(BME280_OSR_PRESS_SEL | BME280_OSR_TEMP_SEL | BME280_OSR_HUM_SEL | BME280_FILTER_SEL, &dev);
-
-	  /* USER CODE BEGIN 3 */
-	  /* FORCED 모드 설정, 측정 후 SLEEP 모드로 전환�?� */
-	  rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &dev);
-	  dev.delay_ms(40);
-	  /* �?��?�터 취�? */
-	  rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &dev);
-	  if(rslt == BME280_OK)
-	  {
-		*intTemp = comp_data.intTemp / 100.0;      /* °C  */
-		*intHum = comp_data.intHum / 1024.0;           /* %   */
-		*intPress = comp_data.intPress / 10000.0;          /* hPa */
-	  }
-
+  rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &dev);
+  if(rslt == BME280_OK)
+  {
+	sensorWaarden[0].sTemp = comp_data.intTemp / 100.0;      /* °C  */
+	sensorWaarden[0].sHum = comp_data.intHum / 1024.0;           /* %   */
+	sensorWaarden[0].sPress = comp_data.intPress / 10000.0;          /* hPa */
+	sendESP();
+  }
   /* USER CODE END readData */
 }
 
@@ -647,7 +700,7 @@ void readData(void *argument)
 * @retval None
 */
 /* USER CODE END Header_getESPtime */
-void getESPtime(void *argument)
+void getESPtime()
 {
   /* USER CODE BEGIN getESPtime */
  debugPrintln(&huart2, "getESPtime FUNC \n"); // Message for debugging
