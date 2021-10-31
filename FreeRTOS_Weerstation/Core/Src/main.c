@@ -40,8 +40,7 @@ int* intTemp; //Contains live temperature data
 int* intHum; //Contains live humidity data
 int* intPress; // Contains live air pressure data
 int intError; // contains live error code
-//char (*senDT)[16]; // Contains date & time from measurement (2D array)
-char time[10][16] = {"", "", "", "", "", "", "", "", "", ""}; // Contains date & time from measurement (2D array)
+char time[10][9] = {"", "", "", "", "", "", "", "", "", ""}; // Contains time from measurement (2D array)
 char NTPdateTime[] = ""; // Contains internet time
 /* USER CODE END PD */
 
@@ -453,18 +452,19 @@ void debugPrintln(UART_HandleTypeDef *huart, char _out[]){
 
 char *sendToESP(char *data)
 {
-	char rxData[50]; //Containt data send from the ESP over UART1
-	char *str = malloc(50);
+	char rxData[100] = {0}; //Contains data send from the ESP over UART1
+	char *str = malloc(100);
 	debugPrintln(&huart2, data); //Print end result AT-command for debugging
 	HAL_UART_Transmit(&huart1, (uint8_t *) data, strlen(data), 100); //Send AT-command
-	HAL_UART_Receive(&huart1, (uint8_t *)rxData, 8, 100); //Get response (like OK or ERROR)
+	HAL_UART_Receive(&huart1, (uint8_t *)rxData, 100, 100); //Get response (like OK or ERROR)
 	//HAL_UART_Transmit(&huart2, (uint8_t*)rxData, strlen(rxData) , 100); //Print response for debugging
-	debugPrintln(&huart2, "msg"); // Message for debugging
+	//debugPrintln(&huart2, "msg: \n"); // Message for debugging
 	debugPrintln(&huart2, rxData); // Message for debugging
-	debugPrintln(&huart2, "\n"); // Message for debugging
-	for(int i = 0; i < 51; i++){
+	//debugPrintln(&huart2, "\n"); // Message for debugging
+	for(int i = 0; i < 101; i++){
 		str[i] = rxData[i];
 	}
+	free(str);
     return str;
 
 }
@@ -616,35 +616,41 @@ void getESPtime(void *argument)
 
 //Local var.
 char response[10]; //Containt data send from the ESP over UART1
-char setNTP[] = "AT+CIPSNTPCFG=1,2,\"0.nl.pool.ntp.org\",\"1.nl.pool.ntp.org\"";
-char getDT[] = "AT+CIPSNTPTIME?";
-char disableEcho[] = "ATE0";
+char setNTP[] = "AT+CIPSNTPCFG=1,2,\"0.nl.pool.ntp.org\",\"1.nl.pool.ntp.org\"\r\n";
+char getDT[] = "AT+CIPSNTPTIME?\r\n";
+char disableEcho[] = "ATE0\r\n";
 
-debugPrintln(&huart2, "Echo disabled: "); // Message for debugging
-debugPrintln(&huart2, sendToESP(disableEcho)); // Message for debugging (disable echo from ESP)
-debugPrintln(&huart2, "\n"); // Message for debugging
+
+//debugPrintln(&huart2, "Echo disabled: "); // Message for debugging
+//debugPrintln(&huart2, sendToESP(disableEcho)); // Message for debugging (disable echo from ESP)
+//debugPrintln(&huart2, "\n"); // Message for debugging
+sendToESP(disableEcho);
 //Check if there was an error
 strcpy(response, sendToESP(setNTP));
 if (strstr(response, "ERROR") != NULL)
 {
 	intError = 1; //change error code to '1' for ESP related error
-	debugPrintln(&huart2, "ERROR1"); // Message for debugging
+	//debugPrintln(&huart2, "ERROR1"); // Message for debugging
 }
+
 osDelay(100);
 //Check if there was an error
 strcpy(response, sendToESP(getDT));
 if (strstr(response, "ERROR") != NULL)
 {
 	intError = 1; //change error code to '1' for ESP related error
-	debugPrintln(&huart2, "ERROR1"); // Message for debugging
+	//debugPrintln(&huart2, "ERROR1"); // Message for debugging
 }else{
-	debugPrintln(&huart2, response); // Message for debugging
 	//Remove date
-	char *tmp = response;
-	tmp += 10;
-	debugPrintln(&huart2, tmp); // Message for debugging
+	//char *tmp = response + 10;
+	memmove(response, response+24, strlen(response));
+	response[strlen(response)-10] = '\0';
+	//debugPrintln(&huart2, "TIJD: \n"); // Message for debugging
+	debugPrintln(&huart2, response); // Message for debugging
+	strcpy(response,NTPdateTime);
 }
-//osDelay(10000); //Delay for sending #1min
+
+ 	osDelay(2000); //Delay for sending #1min
   /* USER CODE END getESPtime */
 }
 
