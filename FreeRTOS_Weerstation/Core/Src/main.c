@@ -43,6 +43,7 @@ struct bme280_dev dev;
 struct bme280_data comp_data;
 int8_t rslt;
 struct sensorWaarde sensorWaarden[10];
+int iCurrentWaarde = 0;
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -181,7 +182,7 @@ int main(void)
 
   /* USER CODE BEGIN 3 */
   /* FORCED 모드 설정, 측정 후 SLEEP 모드로 전환�?� */
-  rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &dev);
+  rslt = bme280_set_sensor_mode(BME280_NORMAL_MODE, &dev);
 
   /* USER CODE END INITIALIZATIONS */
 
@@ -469,7 +470,7 @@ void debugPrintln(UART_HandleTypeDef *huart, char _out[]){
  HAL_UART_Transmit(huart, (uint8_t *) newline, 2, 100);
 }
 
-char *sendToESP(char *data)
+char *sendToESP(char *data, int iReceiveTimeout)
 {
 	char startDelimiter[] = "Start Response\n";
 	char endDelimiter[] = "\nEnd Response\n";
@@ -481,7 +482,7 @@ char *sendToESP(char *data)
 	do
 	{
 		memset(aLocalBuffer, 0, 10);
-		HAL_UART_Receive(&huart1, (uint8_t *)aLocalBuffer, 10, 1000); //Get response (like OK or ERROR)
+		HAL_UART_Receive(&huart1, (uint8_t *)aLocalBuffer, 10, iReceiveTimeout); //Get response (like OK or ERROR)
 		if (iIndexIntoRxData < 50)
 		{
 			memcpy(&rxData[iIndexIntoRxData*10], aLocalBuffer, 10);
@@ -506,34 +507,34 @@ int connectESPtoWifi()
 	char checkWifiConnected[] = "AT+CWJAP?\r\n";
 	char setWifiMode[] = "AT+CWMODE=1\r\n";
 	//char connectToAP[] = "AT+CWJAP=\"Ziggo2257742\",\"Performance1#\"\r\n";
-	char connectToAP[] = "AT+CWJAP=\"Hellbender5\",\"Wireless@Here2\"\r\n";
-	char response[500];
+	char connectToAP[] = "AT+CWJAP=\"Hellbender2\",\"Wireless@Here2\"\r\n";
 
-	strcpy(response, sendToESP(resetESP));
-	strcpy(response, sendToESP(disableEcho));
+	sendToESP(resetESP, 10000);
+	sendToESP(disableEcho, 500);
 
 	//Check if connected to Wifi
-	strcpy(response, sendToESP(checkWifiConnected));
-	if (strstr(response, "No AP") != NULL)
+	sendToESP(checkWifiConnected, 500);
+	if (strstr(rxData, "No AP") != NULL)
 	{
 		//Check if there was an error
-		strcpy(response, sendToESP(setWifiMode));
-		if (strstr(response, "ERROR") != NULL)
+		sendToESP(setWifiMode, 500);
+		if (strstr(rxData, "ERROR") != NULL)
 		{
 			intError = 1; //change error code to '1' for ESP related error
 			debugPrintln(&huart2, "ERROR1"); // Message for debugging
 		}
 		//Check if there was an error
-		strcpy(response, sendToESP(connectToAP));
-		if (strstr(response, "ERROR") != NULL)
+		sendToESP(connectToAP, 10000);
+		if (strstr(rxData, "ERROR") != NULL)
 		{
 			intError = 1; //change error code to '1' for ESP related error
 			debugPrintln(&huart2, "ERROR1"); // Message for debugging
 		}
 		else
 		{
-			debugPrintln(&huart2, response); // Message for debugging
+			debugPrintln(&huart2, rxData); // Message for debugging
 		}
+		user_delay_ms(5000);
 	}
 	getESPtime2();
 	return 1;
@@ -548,28 +549,28 @@ void getESPtime2()
 	char data[] = "GET http://server03.hammer-tech.eu/weerstation/time.php HTTP/1.1\r\nHost: server03.hammer-tech.eu\r\n\r\n";
 	char closeCon[] = "AT+CIPCLOSE\r\n";
 
-	sendToESP(initCon);
+	sendToESP(initCon, 500);
 	//Check if there was an error
 	if (strstr(rxData, "ERROR") != NULL)
 	{
 		intError = 1; //change error code to '1' for ESP related error
 		debugPrintln(&huart2, "ERROR1"); // Message for debugging
 	}
-	sendToESP(initSize);
+	sendToESP(initSize, 500);
 	//Check if there was an error
 	if (strstr(rxData, "ERROR") != NULL)
 	{
 		intError = 1; //change error code to '1' for ESP related error
 		debugPrintln(&huart2, "ERROR1"); // Message for debugging
 	}
-	sendToESP(data);
+	sendToESP(data, 500);
 	//Check if there was an error
 	if (strstr(rxData, "ERROR") != NULL)
 	{
 		intError = 1; //change error code to '1' for ESP related error
 		debugPrintln(&huart2, "ERROR1"); // Message for debugging
 	}
-	sendToESP(closeCon);
+	sendToESP(closeCon, 500);
 
   /* USER CODE END getESPtime2 */
 }
@@ -587,57 +588,60 @@ void sendESP()
 	debugPrintln(&huart2, "sendESP FUNC \n"); // Message for debugging
   /* Infinite loop */
 	//Local var. declaration.
-	int i = 0;
 	char oData[70];
-	sprintf(oData, "temperature=%d&humidity=%d&pressure=%d&time=%d&errors=%d\r\n", sensorWaarden[i].sTemp, sensorWaarden[i].sHum, sensorWaarden[i].sPress, sensorWaarden[i].sTime[0-15], 0);
-	char data[160];
-//	sprintf(data, "POST http://server03.hammer-tech.eu/weerstation/index.php HTTP/1.1\r\nHost: server03.hammer-tech.eu\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: %i\r\n\r\n", strlen(oData)-2);
-	sprintf(data, "POST http://192.168.1.111/weerstation/index.php HTTP/1.1\r\nHost: 192.168.1.111\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: %i\r\n\r\n", strlen(oData)-2);
+	sprintf(oData, "temperature=%d&humidity=%d&pressure=%d&time=%s&errors=%d\r\n", sensorWaarden[iCurrentWaarde].sTemp, sensorWaarden[iCurrentWaarde].sHum, sensorWaarden[iCurrentWaarde].sPress, sensorWaarden[iCurrentWaarde].sTime, 1);
+	char data[180];
+	sprintf(data, "POST http://server03.hammer-tech.eu/weerstation/index.php HTTP/1.1\r\nHost: server03.hammer-tech.eu\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: %i\r\n\r\n", strlen(oData)-2);
+//	sprintf(data, "POST http://192.168.1.111/weerstation/index.php HTTP/1.1\r\nHost: 192.168.1.111\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: %i\r\n\r\n", strlen(oData)-2);
 
-	//char initCon[] = "AT+CIPSTART=\"TCP\",\"server03.hammer-tech.eu\",80\r\n";
-	char initCon[] = "AT+CIPSTART=\"TCP\",\"192.168.1.111\",80\r\n";
+	char initCon[] = "AT+CIPSTART=\"TCP\",\"server03.hammer-tech.eu\",80\r\n";
+//	char initCon[] = "AT+CIPSTART=\"TCP\",\"192.168.1.111\",80\r\n";
 	char initSize[20];
-	sprintf(initSize, "AT+CIPSEND=%d\r\n", strlen(oData) + strlen(data));
+	sprintf(initSize, "AT+CIPSEND=%i\r\n", strlen(oData) + strlen(data));
 	char closeCon[] = "AT+CIPCLOSE\r\n";
 
 
-	if(sensorWaarden[i].sTemp != 0 && sensorWaarden[i].sHum != 0 && sensorWaarden[i].sPress != 0 /*&& time[i][0-15] != 0*/)
+	if(sensorWaarden[iCurrentWaarde].sTemp != 0 && sensorWaarden[iCurrentWaarde].sHum != 0 && sensorWaarden[iCurrentWaarde].sPress != 0 /*&& time[i][0-15] != 0*/)
 	{
-		sendToESP(initCon);
+		sendToESP(initCon, 500);
 		//Check if there was an error
 		if (strstr(rxData, "ERROR") != NULL)
 		{
 			intError = 1; //change error code to '1' for ESP related error
 			debugPrintln(&huart2, "ERROR1"); // Message for debugging
 		}
-		sendToESP(initSize);
+		sendToESP(initSize, 500);
 		//Check if there was an error
 		if (strstr(rxData, "ERROR") != NULL)
 		{
 			intError = 2; //change error code to '1' for ESP related error
 			debugPrintln(&huart2, "ERROR2"); // Message for debugging
 		}
-		sendToESP(data);
+		sendToESP(data, 500);
 		//Check if there was an error
 		if (strstr(rxData, "ERROR") != NULL)
 		{
 			intError = 3; //change error code to '1' for ESP related error
 			debugPrintln(&huart2, "ERROR3"); // Message for debugging
 		}
-		sendToESP(oData);
+		sendToESP(oData, 500);
 		//Check if there was an error
 		if (strstr(rxData, "ERROR") != NULL)
 		{
 			intError = 4; //change error code to '1' for ESP related error
 			debugPrintln(&huart2, "ERROR4"); // Message for debugging
 		}
-		sendToESP(closeCon);
+		sendToESP(closeCon, 500);
 		//Check if there was an error
 		if (strstr(rxData, "ERROR") != NULL)
 		{
 			intError = 5; //change error code to '1' for ESP related error
 			debugPrintln(&huart2, "ERROR5"); // Message for debugging
 		}
+
+		iCurrentWaarde++;
+		if (iCurrentWaarde == 10)
+			iCurrentWaarde = 0;
 	}
 	//osDelay(6000); //Delay for sending #1min
   /* USER CODE END 5 */
@@ -685,9 +689,10 @@ void readData(void *argument)
   rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &dev);
   if(rslt == BME280_OK)
   {
-	sensorWaarden[0].sTemp = comp_data.intTemp / 100.0;      /* °C  */
-	sensorWaarden[0].sHum = comp_data.intHum / 1024.0;           /* %   */
-	sensorWaarden[0].sPress = comp_data.intPress / 10000.0;          /* hPa */
+	sensorWaarden[iCurrentWaarde].sTemp = comp_data.intTemp / 100.0;      /* °C  */
+	sensorWaarden[iCurrentWaarde].sHum = comp_data.intHum / 1024.0;           /* %   */
+	sensorWaarden[iCurrentWaarde].sPress = comp_data.intPress / 10000.0;          /* hPa */
+	sprintf(sensorWaarden[iCurrentWaarde].sTime, "%s", "22%3A25%3A00");
 	sendESP();
   }
   /* USER CODE END readData */
@@ -708,19 +713,17 @@ void getESPtime()
 	//NTPdateTime
 
 //Local var.
-char response[10]; //Containt data send from the ESP over UART1
 char setNTP[] = "AT+CIPSNTPCFG=1,2,\"0.nl.pool.ntp.org\",\"1.nl.pool.ntp.org\"\r\n";
 char getDT[] = "AT+CIPSNTPTIME?\r\n";
-char disableEcho[] = "ATE0\r\n";
 
 
 //debugPrintln(&huart2, "Echo disabled: "); // Message for debugging
 //debugPrintln(&huart2, sendToESP(disableEcho)); // Message for debugging (disable echo from ESP)
 //debugPrintln(&huart2, "\n"); // Message for debugging
-sendToESP(disableEcho);
+
 //Check if there was an error
-strcpy(response, sendToESP(setNTP));
-if (strstr(response, "ERROR") != NULL)
+sendToESP(setNTP, 500);
+if (strstr(rxData, "ERROR") != NULL)
 {
 	intError = 1; //change error code to '1' for ESP related error
 	//debugPrintln(&huart2, "ERROR1"); // Message for debugging
@@ -728,19 +731,19 @@ if (strstr(response, "ERROR") != NULL)
 
 osDelay(100);
 //Check if there was an error
-strcpy(response, sendToESP(getDT));
-if (strstr(response, "ERROR") != NULL)
+sendToESP(getDT, 500);
+if (strstr(rxData, "ERROR") != NULL)
 {
 	intError = 1; //change error code to '1' for ESP related error
 	//debugPrintln(&huart2, "ERROR1"); // Message for debugging
 }else{
 	//Remove date
 	//char *tmp = response + 10;
-	memmove(response, response+24, strlen(response));
-	response[strlen(response)-10] = '\0';
+	memmove(rxData, rxData+24, strlen(rxData));
+	rxData[strlen(rxData)-10] = '\0';
 	//debugPrintln(&huart2, "TIJD: \n"); // Message for debugging
-	debugPrintln(&huart2, response); // Message for debugging
-	strcpy(response,NTPdateTime);
+	debugPrintln(&huart2, rxData); // Message for debugging
+	strcpy(NTPdateTime, rxData);
 }
 
  	osDelay(2000); //Delay for sending #1min

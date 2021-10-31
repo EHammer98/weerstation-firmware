@@ -76,7 +76,7 @@ struct sensorWaarde
 	int sTemp;
 	int sHum;
 	int sPress;
-	char sTime[16];
+	char sTime[12];
 };
 /* USER CODE END Private defines */
 
