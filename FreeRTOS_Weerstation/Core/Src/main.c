@@ -144,9 +144,8 @@ int main(void)
   MX_I2C2_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-
-  /* USER CODE END 2 */
   connectESPtoWifi();
+  /* USER CODE END 2 */
   /* Init scheduler */
   osKernelInitialize();
 
@@ -452,16 +451,16 @@ void debugPrintln(UART_HandleTypeDef *huart, char _out[]){
 
 char *sendToESP(char *data)
 {
-	char rxData[100] = {0}; //Contains data send from the ESP over UART1
-	char *str = malloc(100);
+	char rxData[50] = {0}; //Contains data send from the ESP over UART1
+	char *str = malloc(50);
 	debugPrintln(&huart2, data); //Print end result AT-command for debugging
 	HAL_UART_Transmit(&huart1, (uint8_t *) data, strlen(data), 100); //Send AT-command
-	HAL_UART_Receive(&huart1, (uint8_t *)rxData, 100, 100); //Get response (like OK or ERROR)
+	HAL_UART_Receive(&huart1, (uint8_t *)rxData, 50, 100); //Get response (like OK or ERROR)
 	//HAL_UART_Transmit(&huart2, (uint8_t*)rxData, strlen(rxData) , 100); //Print response for debugging
 	//debugPrintln(&huart2, "msg: \n"); // Message for debugging
 	debugPrintln(&huart2, rxData); // Message for debugging
 	//debugPrintln(&huart2, "\n"); // Message for debugging
-	for(int i = 0; i < 101; i++){
+	for(int i = 0; i < 51; i++){
 		str[i] = rxData[i];
 	}
 	free(str);
@@ -469,16 +468,14 @@ char *sendToESP(char *data)
 
 }
 
-/* USER CODE END 4 */
-int connectESPtoWifi()
+void connectESPtoWifi()
 {
-
 	char resetESP[] = "AT+RST\r\n";
 	char disableEcho[] = "ATE0\r\n";
 	char checkWifiConnected[] = "AT+CWJAP?\r\n";
 	char setWifiMode[] = "AT+CWMODE=1\r\n";
-	char connectToAP[] = "AT+CWJAP=\"Ziggo2257742\",\"Performance1#\"\r\n";
-	char response[500];
+	char connectToAP[] = "AT+CWJAP=\"Hammer-Network_Mobile\",\"5652HN7327\"\r\n";
+	char response[50];
 
 	strcpy(response, sendToESP(resetESP));
 	strcpy(response, sendToESP(disableEcho));
@@ -492,23 +489,23 @@ int connectESPtoWifi()
 		if (strstr(response, "ERROR") != NULL)
 		{
 			intError = 1; //change error code to '1' for ESP related error
-			debugPrintln(&huart2, "ERROR1"); // Message for debugging
+			//debugPrintln(&huart2, "ERROR1"); // Message for debugging
 		}
 		//Check if there was an error
 		strcpy(response, sendToESP(connectToAP));
 		if (strstr(response, "ERROR") != NULL)
 		{
 			intError = 1; //change error code to '1' for ESP related error
-			debugPrintln(&huart2, "ERROR1"); // Message for debugging
+			//debugPrintln(&huart2, "ERROR1"); // Message for debugging
 		}
 		else
 		{
-			debugPrintln(&huart2, response); // Message for debugging
+			//debugPrintln(&huart2, response); // Message for debugging
 		}
 	}
-
-	return 1;
 }
+
+/* USER CODE END 4 */
 
 
 /* USER CODE BEGIN Header_sendESP */

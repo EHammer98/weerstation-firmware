@@ -52,10 +52,9 @@ extern "C" {
 
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
-int connectESPtoWifi();
 
 /* USER CODE BEGIN EFP */
-
+void connectESPtoWifi();
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
