@@ -44,6 +44,7 @@ struct bme280_data comp_data;
 int8_t rslt;
 struct sensorWaarde sensorWaarden[10];
 int iCurrentWaarde = 0;
+char sTime[20];
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -281,6 +282,7 @@ static void MX_I2C1_Init(void)
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
   hi2c1.Init.Timing = 0x2000090E;
+  hi2c1.Init.Timing = 0x00301D2A;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
@@ -570,6 +572,30 @@ void getESPtime2()
 		intError = 1; //change error code to '1' for ESP related error
 		debugPrintln(&huart2, "ERROR1"); // Message for debugging
 	}
+	else
+	{
+		// 100 extra because we know we skipped the header then
+		char sTempTime[10];
+		int iIndex = 0;
+		memset(sTime, 0, 20);
+		char* iAddress = strstr(rxData + 100, "\r\n\r\n");
+		strcpy(sTempTime, iAddress + 15);
+
+		for (int iCounter = 0; iCounter < 10; iCounter++)
+		{
+			if (sTempTime[iCounter] != ':')
+			{
+				sTime[iIndex++] = sTempTime[iCounter];
+			}
+			else
+			{
+				sTime[iIndex++] = '%';
+				sTime[iIndex++] = '3';
+				sTime[iIndex++] = 'A';
+			}
+		}
+	}
+
 	sendToESP(closeCon, 500);
 
   /* USER CODE END getESPtime2 */
@@ -686,13 +712,25 @@ void readData(void *argument)
   /* USER CODE BEGIN readData */
 	debugPrintln(&huart2, "readData FUNC \n"); // Message for debugging
 
+	  dev.settings.osr_h = BME280_OVERSAMPLING_1X;
+	  dev.settings.osr_p = BME280_OVERSAMPLING_16X;
+	  dev.settings.osr_t = BME280_OVERSAMPLING_2X;
+	  dev.settings.filter = BME280_FILTER_COEFF_16;
+	  rslt = bme280_set_sensor_settings(BME280_OSR_PRESS_SEL | BME280_OSR_TEMP_SEL | BME280_OSR_HUM_SEL | BME280_FILTER_SEL, &dev);
+
+	  /* USER CODE BEGIN 3 */
+	  /* FORCED 모드 설정, 측정 후 SLEEP 모드로 전환�?� */
+	  rslt = bme280_set_sensor_mode(BME280_NORMAL_MODE, &dev);
+
+	  user_delay_ms(250);
+
   rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &dev);
   if(rslt == BME280_OK)
   {
 	sensorWaarden[iCurrentWaarde].sTemp = comp_data.intTemp / 100.0;      /* °C  */
 	sensorWaarden[iCurrentWaarde].sHum = comp_data.intHum / 1024.0;           /* %   */
 	sensorWaarden[iCurrentWaarde].sPress = comp_data.intPress / 10000.0;          /* hPa */
-	sprintf(sensorWaarden[iCurrentWaarde].sTime, "%s", "22%3A25%3A00");
+	sprintf(sensorWaarden[iCurrentWaarde].sTime, "%s", sTime);
 	sendESP();
   }
   /* USER CODE END readData */
