@@ -20,13 +20,13 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
-#include "bme280.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "string.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include "bme280.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -62,21 +62,21 @@ osThreadId_t sendESPtaskHandle;
 const osThreadAttr_t sendESPtask_attributes = {
   .name = "sendESPtask",
   .stack_size = 300 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityBelowNormal,
 };
 /* Definitions for readDataTask */
 osThreadId_t readDataTaskHandle;
 const osThreadAttr_t readDataTask_attributes = {
   .name = "readDataTask",
-  .stack_size = 64 * 4,
-  .priority = (osPriority_t) osPriorityLow,
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for getESPtimeTask */
 osThreadId_t getESPtimeTaskHandle;
 const osThreadAttr_t getESPtimeTask_attributes = {
   .name = "getESPtimeTask",
-  .stack_size = 64 * 4,
-  .priority = (osPriority_t) osPriorityLow,
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityAboveNormal,
 };
 /* USER CODE BEGIN PV */
 
@@ -453,13 +453,22 @@ void debugPrintln(UART_HandleTypeDef *huart, char _out[]){
 
 char *sendToESP(char *data)
 {
-	char rxData[10]; //Containt data send from the ESP over UART1
+	char rxData[50]; //Containt data send from the ESP over UART1
+	char *str = malloc(50);
 	debugPrintln(&huart2, data); //Print end result AT-command for debugging
 	HAL_UART_Transmit(&huart1, (uint8_t *) data, strlen(data), 100); //Send AT-command
 	HAL_UART_Receive(&huart1, (uint8_t *)rxData, 8, 100); //Get response (like OK or ERROR)
-	HAL_UART_Transmit(&huart2, (uint8_t*)rxData, strlen(rxData) , 100); //Print response for debugging
-    return rxData;
+	//HAL_UART_Transmit(&huart2, (uint8_t*)rxData, strlen(rxData) , 100); //Print response for debugging
+	debugPrintln(&huart2, "msg"); // Message for debugging
+	debugPrintln(&huart2, rxData); // Message for debugging
+	debugPrintln(&huart2, "\n"); // Message for debugging
+	for(int i = 0; i < 51; i++){
+		str[i] = rxData[i];
+	}
+    return str;
+
 }
+
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_sendESP */
@@ -472,46 +481,44 @@ char *sendToESP(char *data)
 void sendESP(void *argument)
 {
   /* USER CODE BEGIN 5 */
+	debugPrintln(&huart2, "sendESP FUNC \n"); // Message for debugging
   /* Infinite loop */
 	//Local var. declaration.
 	char response[10]; //Containt data send from the ESP over UART1
-	char initCon[] = "AT+CIPSTART=\"TCP\",\"server03.hammer-tech.eu\",443";
+	char initCon[] = "AT+CIPSTART=\"TCP\",\"server03.hammer-tech.eu\",80";
 	char initSize[] = "AT+CIPSEND=177";
 	char data[] = "POST /weerstation/index.php HTTP/1.1r\nHost: server03.hammer-tech.eu\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: 37\r\n\n";
-  for(;;)
-  {
-	  int i;
-	  for(i = 0;i != sizeof(intTemp);i++)
-	  {
-		if(intTemp[i] != 0 && intHum[i] != 0 && intPress[i] != 0 && time[i][0-15] != 0)
+	int i;
+	for(i = 0;i != sizeof(intTemp);i++)
+	{
+	if(intTemp[i] != 0 && intHum[i] != 0 && intPress[i] != 0 && time[i][0-15] != 0)
+	{
+		sprintf(data, "temperatuur=%d&vochtigheid=%d&luchtdruk=%dtime=%d\r\n", intTemp[i], intHum[i], intPress[i], time[i][0-15]);
+		strcpy(response, sendToESP(initCon));
+		//Check if there was an error
+		if (strstr(response, "ERROR") != NULL)
 		{
-			sprintf(data, "temperatuur=%d&vochtigheid=%d&luchtdruk=%dtime=%d\r\n", intTemp[i], intHum[i], intPress[i], time[i][0-15]);
-			strcpy(response, sendToESP(initCon));
-			//Check if there was an error
-			if (strstr(response, "ERROR") != NULL)
-			{
-				intError = 1; //change error code to '1' for ESP related error
-				debugPrintln(&huart2, "ERROR1"); // Message for debugging
-			}
-			strcpy(response, sendToESP(initSize));
-			//Check if there was an error
-			if (strstr(response, "ERROR") != NULL)
-			{
-				intError = 1; //change error code to '1' for ESP related error
-				debugPrintln(&huart2, "ERROR1"); // Message for debugging
-			}
-			strcpy(response, sendToESP(data));
-			//Check if there was an error
-			if (strstr(response, "ERROR") != NULL)
-			{
-				intError = 1; //change error code to '1' for ESP related error
-				debugPrintln(&huart2, "ERROR1"); // Message for debugging
-			}
+			intError = 1; //change error code to '1' for ESP related error
+			debugPrintln(&huart2, "ERROR1"); // Message for debugging
 		}
-		osDelay(60000); //Delay for sending #1min
-	  }
-	  i = 0;
-  }
+		strcpy(response, sendToESP(initSize));
+		//Check if there was an error
+		if (strstr(response, "ERROR") != NULL)
+		{
+			intError = 1; //change error code to '1' for ESP related error
+			debugPrintln(&huart2, "ERROR1"); // Message for debugging
+		}
+		strcpy(response, sendToESP(data));
+		//Check if there was an error
+		if (strstr(response, "ERROR") != NULL)
+		{
+			intError = 1; //change error code to '1' for ESP related error
+			debugPrintln(&huart2, "ERROR1"); // Message for debugging
+		}
+	}
+	//osDelay(6000); //Delay for sending #1min
+	}
+	i = 0;
   /* USER CODE END 5 */
 }
 
@@ -560,6 +567,7 @@ int8_t user_i2c_write(uint8_t id, uint8_t reg_addr, uint8_t *data, uint16_t len)
 void readData(void *argument)
 {
   /* USER CODE BEGIN readData */
+	debugPrintln(&huart2, "readData FUNC \n"); // Message for debugging
 	/* BME280 초기화 */
 	  dev.dev_id = BME280_I2C_ADDR_SEC;
 	  dev.intf = BME280_I2C_INTF;
@@ -576,23 +584,19 @@ void readData(void *argument)
 	  dev.settings.filter = BME280_FILTER_COEFF_16;
 	  rslt = bme280_set_sensor_settings(BME280_OSR_PRESS_SEL | BME280_OSR_TEMP_SEL | BME280_OSR_HUM_SEL | BME280_FILTER_SEL, &dev);
 
-  /* Infinite loop */
-  for(;;)
-  {
 	  /* USER CODE BEGIN 3 */
-	      /* FORCED 모드 설정, 측정 후 SLEEP 모드로 전환�?� */
-	      rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &dev);
-	      dev.delay_ms(40);
-	      /* �?��?�터 취�? */
-	      rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &dev);
-	      if(rslt == BME280_OK)
-	      {
-	    	*intTemp = comp_data.intTemp / 100.0;      /* °C  */
-	    	*intHum = comp_data.intHum / 1024.0;           /* %   */
-	    	*intPress = comp_data.intPress / 10000.0;          /* hPa */
-	      }
+	  /* FORCED 모드 설정, 측정 후 SLEEP 모드로 전환�?� */
+	  rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &dev);
+	  dev.delay_ms(40);
+	  /* �?��?�터 취�? */
+	  rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &dev);
+	  if(rslt == BME280_OK)
+	  {
+		*intTemp = comp_data.intTemp / 100.0;      /* °C  */
+		*intHum = comp_data.intHum / 1024.0;           /* %   */
+		*intPress = comp_data.intPress / 10000.0;          /* hPa */
+	  }
 
-  }
   /* USER CODE END readData */
 }
 
@@ -606,37 +610,41 @@ void readData(void *argument)
 void getESPtime(void *argument)
 {
   /* USER CODE BEGIN getESPtime */
+ debugPrintln(&huart2, "getESPtime FUNC \n"); // Message for debugging
   /* Infinite loop */
 	//NTPdateTime
 
-	char response[10]; //Containt data send from the ESP over UART1
-	char setNTP[] = "AT+CIPSNTPCFG=1,2,\"0.nl.pool.ntp.org\",\"1.nl.pool.ntp.org\"";
-	char getDT[] = "AT+CIPSNTPTIME?";
-  for(;;)
-  {
-	//Check if there was an error
-	strcpy(response, sendToESP(setNTP));
-	if (strstr(response, "ERROR") != NULL)
-	{
-		intError = 1; //change error code to '1' for ESP related error
-		debugPrintln(&huart2, "ERROR1"); // Message for debugging
-	}
-	osDelay(100);
-	//Check if there was an error
-	strcpy(response, sendToESP(getDT));
-	if (strstr(response, "ERROR") != NULL)
-	{
-		intError = 1; //change error code to '1' for ESP related error
-		debugPrintln(&huart2, "ERROR1"); // Message for debugging
-	}else{
-		debugPrintln(&huart2, response); // Message for debugging
-		//Remove date
-		char *tmp = response;
-		tmp += 10;
-		debugPrintln(&huart2, tmp); // Message for debugging
-	}
-	osDelay(60000); //Delay for sending #1min
-  }
+//Local var.
+char response[10]; //Containt data send from the ESP over UART1
+char setNTP[] = "AT+CIPSNTPCFG=1,2,\"0.nl.pool.ntp.org\",\"1.nl.pool.ntp.org\"";
+char getDT[] = "AT+CIPSNTPTIME?";
+char disableEcho[] = "ATE0";
+
+debugPrintln(&huart2, "Echo disabled: "); // Message for debugging
+debugPrintln(&huart2, sendToESP(disableEcho)); // Message for debugging (disable echo from ESP)
+debugPrintln(&huart2, "\n"); // Message for debugging
+//Check if there was an error
+strcpy(response, sendToESP(setNTP));
+if (strstr(response, "ERROR") != NULL)
+{
+	intError = 1; //change error code to '1' for ESP related error
+	debugPrintln(&huart2, "ERROR1"); // Message for debugging
+}
+osDelay(100);
+//Check if there was an error
+strcpy(response, sendToESP(getDT));
+if (strstr(response, "ERROR") != NULL)
+{
+	intError = 1; //change error code to '1' for ESP related error
+	debugPrintln(&huart2, "ERROR1"); // Message for debugging
+}else{
+	debugPrintln(&huart2, response); // Message for debugging
+	//Remove date
+	char *tmp = response;
+	tmp += 10;
+	debugPrintln(&huart2, tmp); // Message for debugging
+}
+//osDelay(10000); //Delay for sending #1min
   /* USER CODE END getESPtime */
 }
 

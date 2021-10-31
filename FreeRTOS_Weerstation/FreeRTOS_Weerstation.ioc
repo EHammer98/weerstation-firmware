@@ -1,9 +1,9 @@
 #MicroXplorer Configuration settings - do not modify
 FREERTOS.FootprintOK=true
 FREERTOS.IPParameters=Tasks01,FootprintOK,configTOTAL_HEAP_SIZE,configUSE_NEWLIB_REENTRANT,configMINIMAL_STACK_SIZE
-FREERTOS.Tasks01=sendESPtask,24,300,sendESP,Default,NULL,Dynamic,NULL,NULL;readDataTask,8,64,readData,Default,NULL,Dynamic,NULL,NULL;getESPtimeTask,8,64,getESPtime,Default,NULL,Dynamic,NULL,NULL
+FREERTOS.Tasks01=sendESPtask,16,300,sendESP,Default,NULL,Dynamic,NULL,NULL;readDataTask,24,128,readData,Default,NULL,Dynamic,NULL,NULL;getESPtimeTask,32,128,getESPtime,Default,NULL,Dynamic,NULL,NULL
 FREERTOS.configMINIMAL_STACK_SIZE=0x40
-FREERTOS.configTOTAL_HEAP_SIZE=2094
+FREERTOS.configTOTAL_HEAP_SIZE=2694
 FREERTOS.configUSE_NEWLIB_REENTRANT=0
 File.Version=6
 GPIO.groupedBy=Group By Peripherals

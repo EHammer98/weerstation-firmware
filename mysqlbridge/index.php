@@ -39,21 +39,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' ) {
         $temperature      = $_POST['temperature']     ;
         $humidity    = $_POST['humidity']   ;
         $pressure = $_POST['pressure'];
-     	$datetime = $_POST['datetime'];
+     	$time = $_POST['time'];
    		$errors = $_POST['errors'];
 
-        if (!$temperature || !$humidity || !$pressure || !$datetime){ 
+        if (!$temperature || !$humidity || !$pressure || !$time || !$errors){ 
             throw new Exception('parameters temperature, humidity and/or pressure and/or dateTime not provided'); 
         }
 
         /* database query */
         $mysqli = db_open();
         $query = sprintf(
-            'INSERT INTO sensordata (intTemp, intHum, intPress, dtDateTime) VALUES ("%s", "%s", "%s", "%s")',
+            'INSERT INTO tblsensordata (intTemp, intHum, intPress, tTime, intStationErrors, dtDateTime) VALUES ("%s", "%s", "%s", "%s", "%s", "%s")',
             $mysqli->real_escape_string($temperature)     ,
             $mysqli->real_escape_string($humidity)   , 
             $mysqli->real_escape_string($pressure)   , 
-        	$mysqli->real_escape_string($datetime)
+        	$mysqli->real_escape_string($time)   ,
+        	$mysqli->real_escape_string($errors)   ,
+        	$mysqli->real_escape_string($datum)
         );
         $result = $mysqli->query($query);
 
@@ -65,24 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' ) {
         else{
             http_response_code(400); // bad request
             echo "nok";
-        } 
-        $query = sprintf(
-            'INSERT INTO weatherstation (intDataReceived, intStationErrors, dtDateTime) VALUES ("%s", "%s", "%s")',
-            $mysqli->real_escape_string(1)     ,
-            $mysqli->real_escape_string($errors)   , 
-            $mysqli->real_escape_string($datum)  
-        );
-        $result = $mysqli->query($query);
-
-        /* processing result(s) */
-        if ($result){
-            http_response_code(200); // status ok
-            echo "ok";
-        }
-        else{
-            http_response_code(400); // bad request
-            echo "nok";
-        } 
+        }        
     }
     catch (Exception $e){
         http_response_code(400); /* bad request */
