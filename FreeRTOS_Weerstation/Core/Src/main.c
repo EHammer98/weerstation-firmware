@@ -146,7 +146,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
-
+  connectESPtoWifi();
   /* Init scheduler */
   osKernelInitialize();
 
@@ -470,6 +470,46 @@ char *sendToESP(char *data)
 }
 
 /* USER CODE END 4 */
+int connectESPtoWifi()
+{
+
+	char resetESP[] = "AT+RST\r\n";
+	char disableEcho[] = "ATE0\r\n";
+	char checkWifiConnected[] = "AT+CWJAP?\r\n";
+	char setWifiMode[] = "AT+CWMODE=1\r\n";
+	char connectToAP[] = "AT+CWJAP=\"Ziggo2257742\",\"Performance1#\"\r\n";
+	char response[500];
+
+	strcpy(response, sendToESP(resetESP));
+	strcpy(response, sendToESP(disableEcho));
+
+	//Check if connected to Wifi
+	strcpy(response, sendToESP(checkWifiConnected));
+	if (strstr(response, "No AP") != NULL)
+	{
+		//Check if there was an error
+		strcpy(response, sendToESP(setWifiMode));
+		if (strstr(response, "ERROR") != NULL)
+		{
+			intError = 1; //change error code to '1' for ESP related error
+			debugPrintln(&huart2, "ERROR1"); // Message for debugging
+		}
+		//Check if there was an error
+		strcpy(response, sendToESP(connectToAP));
+		if (strstr(response, "ERROR") != NULL)
+		{
+			intError = 1; //change error code to '1' for ESP related error
+			debugPrintln(&huart2, "ERROR1"); // Message for debugging
+		}
+		else
+		{
+			debugPrintln(&huart2, response); // Message for debugging
+		}
+	}
+
+	return 1;
+}
+
 
 /* USER CODE BEGIN Header_sendESP */
 /**
