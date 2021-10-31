@@ -19,6 +19,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include <stdio.h>
 #include <string.h>
 
 /* Private includes ----------------------------------------------------------*/
@@ -41,6 +42,8 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+TIM_HandleTypeDef htim16;
+
 UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
@@ -51,6 +54,7 @@ UART_HandleTypeDef huart1;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART1_UART_Init(void);
+static void MX_TIM16_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -73,7 +77,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+	char uart_buf[50]; // uart buffer
+	int uart_buf_len; // buffer length
+	uint16_t timer_val; // store the timer value
+	uint16_t compl_timers_val = 0; // Keep track of how many times timer_val reached 65536
+	int wakeUpTrigger = 0; // will trigger the
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -95,16 +103,32 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART1_UART_Init();
+  MX_TIM16_Init();
   /* USER CODE BEGIN 2 */
+	uart_buf_len = sprintf(uart_buf, "Timer test \r\n");
+	HAL_UART_Transmit(&huart1, (uint8_t *)uart_buf, uart_buf_len, 100);
+
+	 // Start timer
+	  HAL_TIM_Base_Start(&htim16);
 
   /* USER CODE END 2 */
-
-  HAL_UART_Receive_IT(&huart1, &Rx_data, 1);
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+
+	  timer_val = __HAL_TIM_GET_COUNTER(&htim16);
+
+	  if(timer_val > 65500){
+		  compl_timers_val += 1;
+		  if(compl_timers_val >= 75){
+			  compl_timers_val = 0;
+			  wakeUpTrigger = 1;
+		  }
+	  }
+
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -123,7 +147,7 @@ int main(void)
 	  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 0); // Just to indicate sleep mode is activated
 
 	  // Enter the sleep MODE NOW...
-	  HAL_PWR_EnterSLEEPMode(PWR_MAINREGULATOR_ON, 1); // Interrupt for wake up
+	  HAL_PWR_EnterSLEEPMode(PWR_MAINREGULATOR_ON, wakeUpTrigger); // Interrupt for wake up
 
 	  HAL_ResumeTick();
 
@@ -133,6 +157,10 @@ int main(void)
 	  for(int i = 0; i < 20; i++){
 		  HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
 		  HAL_Delay(500);
+	  }
+
+	  if(wakeUpTrigger == 1){
+		  wakeUpTrigger = 0;
 	  }
   }
   /* USER CODE END 3 */
@@ -179,6 +207,38 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief TIM16 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM16_Init(void)
+{
+
+  /* USER CODE BEGIN TIM16_Init 0 */
+
+  /* USER CODE END TIM16_Init 0 */
+
+  /* USER CODE BEGIN TIM16_Init 1 */
+
+  /* USER CODE END TIM16_Init 1 */
+  htim16.Instance = TIM16;
+  htim16.Init.Prescaler = 800 -1;
+  htim16.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim16.Init.Period = 65535;
+  htim16.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim16.Init.RepetitionCounter = 0;
+  htim16.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim16) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM16_Init 2 */
+
+  /* USER CODE END TIM16_Init 2 */
+
 }
 
 /**
