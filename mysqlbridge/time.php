@@ -1,7 +1,9 @@
 <?php
+$tz = 'Europe/Amsterdam';
 $timestamp = time();
-$datum = date("Y:m:d H:i:s",$timestamp);
-//echo "$datum\n";
+$dt = new DateTime("now", new DateTimeZone($tz)); //first argument "must" be a string
+$dt->setTimestamp($timestamp); //adjust the object to correct timestamp
+$datum = $dt->format('d-m-Y H:i:s');
 
 if ( $_SERVER['REQUEST_METHOD'] == 'GET' ) {
     //echo json_encode(($datum));
