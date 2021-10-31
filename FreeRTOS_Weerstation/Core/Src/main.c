@@ -538,7 +538,6 @@ int connectESPtoWifi()
 		}
 		user_delay_ms(5000);
 	}
-	getESPtime2();
 	return 1;
 }
 
@@ -710,28 +709,34 @@ int8_t user_i2c_write(uint8_t id, uint8_t reg_addr, uint8_t *data, uint16_t len)
 void readData(void *argument)
 {
   /* USER CODE BEGIN readData */
-	debugPrintln(&huart2, "readData FUNC \n"); // Message for debugging
 
-	  dev.settings.osr_h = BME280_OVERSAMPLING_1X;
-	  dev.settings.osr_p = BME280_OVERSAMPLING_16X;
-	  dev.settings.osr_t = BME280_OVERSAMPLING_2X;
-	  dev.settings.filter = BME280_FILTER_COEFF_16;
-	  rslt = bme280_set_sensor_settings(BME280_OSR_PRESS_SEL | BME280_OSR_TEMP_SEL | BME280_OSR_HUM_SEL | BME280_FILTER_SEL, &dev);
+	for(;;)
+	{
+		getESPtime2();
+		debugPrintln(&huart2, "readData FUNC \n"); // Message for debugging
 
-	  /* USER CODE BEGIN 3 */
-	  /* FORCED 모드 설정, 측정 후 SLEEP 모드로 전환�?� */
-	  rslt = bme280_set_sensor_mode(BME280_NORMAL_MODE, &dev);
+		dev.settings.osr_h = BME280_OVERSAMPLING_1X;
+		dev.settings.osr_p = BME280_OVERSAMPLING_16X;
+		dev.settings.osr_t = BME280_OVERSAMPLING_2X;
+		dev.settings.filter = BME280_FILTER_COEFF_16;
+		rslt = bme280_set_sensor_settings(BME280_OSR_PRESS_SEL | BME280_OSR_TEMP_SEL | BME280_OSR_HUM_SEL | BME280_FILTER_SEL, &dev);
 
-	  user_delay_ms(250);
+		/* USER CODE BEGIN 3 */
+		/* FORCED 모드 설정, 측정 후 SLEEP 모드로 전환�?� */
+		rslt = bme280_set_sensor_mode(BME280_NORMAL_MODE, &dev);
 
-  rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &dev);
-  if(rslt == BME280_OK)
-  {
-	sensorWaarden[iCurrentWaarde].sTemp = comp_data.intTemp / 100.0;      /* °C  */
-	sensorWaarden[iCurrentWaarde].sHum = comp_data.intHum / 1024.0;           /* %   */
-	sensorWaarden[iCurrentWaarde].sPress = comp_data.intPress / 10000.0;          /* hPa */
-	sprintf(sensorWaarden[iCurrentWaarde].sTime, "%s", sTime);
-	sendESP();
+		user_delay_ms(250);
+
+		rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &dev);
+		if(rslt == BME280_OK)
+		{
+			sensorWaarden[iCurrentWaarde].sTemp = comp_data.intTemp / 100.0;      /* °C  */
+			sensorWaarden[iCurrentWaarde].sHum = comp_data.intHum / 1024.0;           /* %   */
+			sensorWaarden[iCurrentWaarde].sPress = comp_data.intPress / 10000.0;          /* hPa */
+			sprintf(sensorWaarden[iCurrentWaarde].sTime, "%s", sTime);
+			sendESP();
+		}
+		user_delay_ms(60000);
   }
   /* USER CODE END readData */
 }
