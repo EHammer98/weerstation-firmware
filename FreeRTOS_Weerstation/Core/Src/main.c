@@ -59,13 +59,6 @@ I2C_HandleTypeDef hi2c2;
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 
-/* Definitions for sendESPtask */
-osThreadId_t sendESPtaskHandle;
-//const osThreadAttr_t sendESPtask_attributes = {
-//  .name = "sendESPtask",
-//  .stack_size = 300 * 4,
-//  .priority = (osPriority_t) osPriorityBelowNormal,
-//};
 /* Definitions for readDataTask */
 osThreadId_t readDataTaskHandle;
 const osThreadAttr_t readDataTask_attributes = {
@@ -73,16 +66,6 @@ const osThreadAttr_t readDataTask_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
-/* Definitions for getESPtimeTask */
-/*osThreadId_t getESPtimeTaskHandle;
-const osThreadAttr_t getESPtimeTask_attributes = {
-  .name = "getESPtimeTask",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityAboveNormal,
-};*/
-/* USER CODE BEGIN PV */
-
-/* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
@@ -99,24 +82,12 @@ int8_t user_i2c_read(uint8_t id, uint8_t reg_addr, uint8_t *data, uint16_t len);
 int8_t user_i2c_write(uint8_t id, uint8_t reg_addr, uint8_t *data, uint16_t len);
 void user_delay_ms(uint32_t period);
 
-/* USER CODE BEGIN PFP */
-
-/* USER CODE END PFP */
-
-/* Private user code ---------------------------------------------------------*/
-/* USER CODE BEGIN 0 */
-
-/* USER CODE END 0 */
-
 /**
   * @brief  The application entry point.
   * @retval int
   */
 int main(void)
 {
-  /* USER CODE BEGIN 1 */
-
-  /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
 
@@ -136,36 +107,18 @@ int main(void)
   /* Configure the system clock */
   SystemClock_Config();
 
-  /* USER CODE BEGIN SysInit */
-
-  /* USER CODE END SysInit */
-
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   MX_I2C1_Init();
   MX_I2C2_Init();
   MX_USART1_UART_Init();
-  /* USER CODE BEGIN 2 */
-
-  /* USER CODE END 2 */
+  /* call to function */
   connectESPtoWifi();
   /* Init scheduler */
   osKernelInitialize();
 
-  /* USER CODE BEGIN RTOS_MUTEX */
-  /* add mutexes, ... */
-  /* USER CODE END RTOS_MUTEX */
-
-  /* USER CODE BEGIN RTOS_SEMAPHORES */
-  /* add semaphores, ... */
-  /* USER CODE END RTOS_SEMAPHORES */
-
-  /* USER CODE BEGIN RTOS_TIMERS */
-  /* start timers, add new ones, ... */
-  /* USER CODE END RTOS_TIMERS */
-
-  /* USER CODE BEGIN INITIALIZATIONS */
+  /* USER CODE BEGIN INITIALIZATIONS FOR THE BME280 */
   dev.dev_id = BME280_I2C_ADDR_SEC;
   dev.intf = BME280_I2C_INTF;
   dev.read = user_i2c_read;
@@ -174,50 +127,27 @@ int main(void)
 
   rslt = bme280_init(&dev);
 
-  /* BME280 설정 */
   dev.settings.osr_h = BME280_OVERSAMPLING_1X;
   dev.settings.osr_p = BME280_OVERSAMPLING_16X;
   dev.settings.osr_t = BME280_OVERSAMPLING_2X;
   dev.settings.filter = BME280_FILTER_COEFF_16;
   rslt = bme280_set_sensor_settings(BME280_OSR_PRESS_SEL | BME280_OSR_TEMP_SEL | BME280_OSR_HUM_SEL | BME280_FILTER_SEL, &dev);
 
-  /* USER CODE BEGIN 3 */
-  /* FORCED 모드 설정, 측정 후 SLEEP 모드로 전환�?� */
-  rslt = bme280_set_sensor_mode(BME280_NORMAL_MODE, &dev);
+  rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &dev);
 
-  /* USER CODE END INITIALIZATIONS */
+  /* USER CODE END INITIALIZATIONS FOR THE BME280 */
 
   /* Create the thread(s) */
-  /* creation of sendESPtask */
-//  sendESPtaskHandle = osThreadNew(sendESP, NULL, &sendESPtask_attributes);
-
   /* creation of readDataTask */
   readDataTaskHandle = osThreadNew(readData, NULL, &readDataTask_attributes);
-
-  /* creation of getESPtimeTask */
-  //getESPtimeTaskHandle = osThreadNew(getESPtime, NULL, &getESPtimeTask_attributes);
-
-  /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
-  /* USER CODE END RTOS_THREADS */
-
-  /* USER CODE BEGIN RTOS_EVENTS */
-  /* add events, ... */
-  /* USER CODE END RTOS_EVENTS */
 
   /* Start scheduler */
   osKernelStart();
 
   /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-    /* USER CODE END WHILE */
+  while (1) {}
 
-    /* USER CODE BEGIN 3 */
-  }
-  /* USER CODE END 3 */
 }
 
 /**
@@ -273,13 +203,6 @@ void SystemClock_Config(void)
 static void MX_I2C1_Init(void)
 {
 
-  /* USER CODE BEGIN I2C1_Init 0 */
-
-  /* USER CODE END I2C1_Init 0 */
-
-  /* USER CODE BEGIN I2C1_Init 1 */
-
-  /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
   hi2c1.Init.Timing = 0x2000090E;
   hi2c1.Init.Timing = 0x00301D2A;
@@ -306,9 +229,6 @@ static void MX_I2C1_Init(void)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN I2C1_Init 2 */
-
-  /* USER CODE END I2C1_Init 2 */
 
 }
 
@@ -320,13 +240,6 @@ static void MX_I2C1_Init(void)
 static void MX_I2C2_Init(void)
 {
 
-  /* USER CODE BEGIN I2C2_Init 0 */
-
-  /* USER CODE END I2C2_Init 0 */
-
-  /* USER CODE BEGIN I2C2_Init 1 */
-
-  /* USER CODE END I2C2_Init 1 */
   hi2c2.Instance = I2C2;
   hi2c2.Init.Timing = 0x20303E5D;
   hi2c2.Init.OwnAddress1 = 0;
@@ -352,9 +265,6 @@ static void MX_I2C2_Init(void)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN I2C2_Init 2 */
-
-  /* USER CODE END I2C2_Init 2 */
 
 }
 
@@ -366,13 +276,6 @@ static void MX_I2C2_Init(void)
 static void MX_USART1_UART_Init(void)
 {
 
-  /* USER CODE BEGIN USART1_Init 0 */
-
-  /* USER CODE END USART1_Init 0 */
-
-  /* USER CODE BEGIN USART1_Init 1 */
-
-  /* USER CODE END USART1_Init 1 */
   huart1.Instance = USART1;
   huart1.Init.BaudRate = 115200;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
@@ -387,9 +290,6 @@ static void MX_USART1_UART_Init(void)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN USART1_Init 2 */
-
-  /* USER CODE END USART1_Init 2 */
 
 }
 
@@ -401,13 +301,6 @@ static void MX_USART1_UART_Init(void)
 static void MX_USART2_UART_Init(void)
 {
 
-  /* USER CODE BEGIN USART2_Init 0 */
-
-  /* USER CODE END USART2_Init 0 */
-
-  /* USER CODE BEGIN USART2_Init 1 */
-
-  /* USER CODE END USART2_Init 1 */
   huart2.Instance = USART2;
   huart2.Init.BaudRate = 115200;
   huart2.Init.WordLength = UART_WORDLENGTH_8B;
@@ -422,9 +315,6 @@ static void MX_USART2_UART_Init(void)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN USART2_Init 2 */
-
-  /* USER CODE END USART2_Init 2 */
 
 }
 
@@ -500,7 +390,6 @@ char *sendToESP(char *data, int iReceiveTimeout)
 
 }
 
-/* USER CODE END 4 */
 int connectESPtoWifi()
 {
 
@@ -508,8 +397,9 @@ int connectESPtoWifi()
 	char disableEcho[] = "ATE0\r\n";
 	char checkWifiConnected[] = "AT+CWJAP?\r\n";
 	char setWifiMode[] = "AT+CWMODE=1\r\n";
-	//char connectToAP[] = "AT+CWJAP=\"Ziggo2257742\",\"Performance1#\"\r\n";
-	char connectToAP[] = "AT+CWJAP=\"Hellbender2\",\"Wireless@Here2\"\r\n";
+	//char connectToAP[] = "AT+CWJAP=\"Ziggo2257742\",\"w8woord\"\r\n";
+	//char connectToAP[] = "AT+CWJAP=\"Hellbender2\",\"w8woord\"\r\n";
+	char connectToAP[] = "AT+CWJAP=\"ONEPLUS_co_aprcmq\",\"12345678\"\r\n";
 
 	sendToESP(resetESP, 10000);
 	sendToESP(disableEcho, 500);
@@ -540,6 +430,7 @@ int connectESPtoWifi()
 	}
 	return 1;
 }
+/* USER CODE END 4 */
 
 void getESPtime2()
 {
@@ -609,18 +500,16 @@ void getESPtime2()
 /* USER CODE END Header_sendESP */
 void sendESP()
 {
-  /* USER CODE BEGIN 5 */
+	/* USER CODE BEGIN 5 */
 	debugPrintln(&huart2, "sendESP FUNC \n"); // Message for debugging
-  /* Infinite loop */
+	/* Infinite loop */
 	//Local var. declaration.
 	char oData[70];
 	sprintf(oData, "temperature=%d&humidity=%d&pressure=%d&time=%s&errors=%d\r\n", sensorWaarden[iCurrentWaarde].sTemp, sensorWaarden[iCurrentWaarde].sHum, sensorWaarden[iCurrentWaarde].sPress, sensorWaarden[iCurrentWaarde].sTime, 1);
 	char data[180];
 	sprintf(data, "POST http://server03.hammer-tech.eu/weerstation/index.php HTTP/1.1\r\nHost: server03.hammer-tech.eu\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: %i\r\n\r\n", strlen(oData)-2);
-//	sprintf(data, "POST http://192.168.1.111/weerstation/index.php HTTP/1.1\r\nHost: 192.168.1.111\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: %i\r\n\r\n", strlen(oData)-2);
 
 	char initCon[] = "AT+CIPSTART=\"TCP\",\"server03.hammer-tech.eu\",80\r\n";
-//	char initCon[] = "AT+CIPSTART=\"TCP\",\"192.168.1.111\",80\r\n";
 	char initSize[20];
 	sprintf(initSize, "AT+CIPSEND=%i\r\n", strlen(oData) + strlen(data));
 	char closeCon[] = "AT+CIPCLOSE\r\n";
@@ -668,7 +557,6 @@ void sendESP()
 		if (iCurrentWaarde == 10)
 			iCurrentWaarde = 0;
 	}
-	//osDelay(6000); //Delay for sending #1min
   /* USER CODE END 5 */
 }
 
@@ -704,8 +592,8 @@ int8_t user_i2c_write(uint8_t id, uint8_t reg_addr, uint8_t *data, uint16_t len)
   free(buf);
   return 0;
 }
-
 /* USER CODE END Header_readData */
+
 void readData(void *argument)
 {
   /* USER CODE BEGIN readData */
@@ -720,10 +608,7 @@ void readData(void *argument)
 		dev.settings.osr_t = BME280_OVERSAMPLING_2X;
 		dev.settings.filter = BME280_FILTER_COEFF_16;
 		rslt = bme280_set_sensor_settings(BME280_OSR_PRESS_SEL | BME280_OSR_TEMP_SEL | BME280_OSR_HUM_SEL | BME280_FILTER_SEL, &dev);
-
-		/* USER CODE BEGIN 3 */
-		/* FORCED 모드 설정, 측정 후 SLEEP 모드로 전환�?� */
-		rslt = bme280_set_sensor_mode(BME280_NORMAL_MODE, &dev);
+		rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &dev);
 
 		user_delay_ms(250);
 
@@ -741,57 +626,7 @@ void readData(void *argument)
   /* USER CODE END readData */
 }
 
-/* USER CODE BEGIN Header_getESPtime */
-/**
-* @brief Function implementing the getESPtimeTask thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_getESPtime */
-void getESPtime()
-{
-  /* USER CODE BEGIN getESPtime */
- debugPrintln(&huart2, "getESPtime FUNC \n"); // Message for debugging
-  /* Infinite loop */
-	//NTPdateTime
 
-//Local var.
-char setNTP[] = "AT+CIPSNTPCFG=1,2,\"0.nl.pool.ntp.org\",\"1.nl.pool.ntp.org\"\r\n";
-char getDT[] = "AT+CIPSNTPTIME?\r\n";
-
-
-//debugPrintln(&huart2, "Echo disabled: "); // Message for debugging
-//debugPrintln(&huart2, sendToESP(disableEcho)); // Message for debugging (disable echo from ESP)
-//debugPrintln(&huart2, "\n"); // Message for debugging
-
-//Check if there was an error
-sendToESP(setNTP, 500);
-if (strstr(rxData, "ERROR") != NULL)
-{
-	intError = 1; //change error code to '1' for ESP related error
-	//debugPrintln(&huart2, "ERROR1"); // Message for debugging
-}
-
-osDelay(100);
-//Check if there was an error
-sendToESP(getDT, 500);
-if (strstr(rxData, "ERROR") != NULL)
-{
-	intError = 1; //change error code to '1' for ESP related error
-	//debugPrintln(&huart2, "ERROR1"); // Message for debugging
-}else{
-	//Remove date
-	//char *tmp = response + 10;
-	memmove(rxData, rxData+24, strlen(rxData));
-	rxData[strlen(rxData)-10] = '\0';
-	//debugPrintln(&huart2, "TIJD: \n"); // Message for debugging
-	debugPrintln(&huart2, rxData); // Message for debugging
-	strcpy(NTPdateTime, rxData);
-}
-
- 	osDelay(2000); //Delay for sending #1min
-  /* USER CODE END getESPtime */
-}
 
 /**
   * @brief  Period elapsed callback in non blocking mode
@@ -803,15 +638,11 @@ if (strstr(rxData, "ERROR") != NULL)
   */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-  /* USER CODE BEGIN Callback 0 */
 
-  /* USER CODE END Callback 0 */
   if (htim->Instance == TIM17) {
     HAL_IncTick();
   }
-  /* USER CODE BEGIN Callback 1 */
 
-  /* USER CODE END Callback 1 */
 }
 
 /**
@@ -820,13 +651,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   */
 void Error_Handler(void)
 {
-  /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
-  while (1)
-  {
-  }
-  /* USER CODE END Error_Handler_Debug */
+  while (1) {}
+
 }
 
 #ifdef  USE_FULL_ASSERT
